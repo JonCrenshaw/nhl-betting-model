@@ -148,6 +148,7 @@ nhl-betting-model/
 │   ├── glossary.md                # Domain terms
 │   ├── architecture/
 │   │   └── data-warehouse.md      # Warehouse design
+│   ├── costs/                     # Cost tracking (budget, expenses.csv)
 │   ├── decisions/                 # ADRs
 │   └── ideas/                     # Parking lot
 ├── src/                           # Python source (created in M1)
