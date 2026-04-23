@@ -5,7 +5,7 @@ A predictive modeling and betting analytics product. Identifies +EV (positive ex
 **Phase 1 scope: NHL.** The data model is sport-agnostic from the silver layer up, so MLB, NBA, NFL, and European soccer can be added in Phase 3 without a rewrite. Note: the name "PuckBunny" is hockey-specific; multi-sport expansion will prompt a branding discussion (parent brand, rename, or per-sport sub-brands).
 
 ## Current status
-**Phase 1 — Proof of Concept** (planning stage).
+**Phase 1 — Proof of Concept** (planning stage)
 
 ## The short version
 1. Pull player, team, lineup, injury, and game data from NHL and third-party sources into a sport-agnostic data warehouse.
