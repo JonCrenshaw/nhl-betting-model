@@ -25,6 +25,7 @@ A predictive modeling and betting analytics product. Identifies +EV (positive ex
 
 ## Where to start
 - [CLAUDE.md](./CLAUDE.md) — working agreements for Claude Code sessions
+- [docs/working-with-claude.md](./docs/working-with-claude.md) — how Jon gets the most out of Claude across sessions
 - [docs/roadmap.md](./docs/roadmap.md) — phased milestones and timeline
 - [docs/architecture/data-warehouse.md](./docs/architecture/data-warehouse.md) — warehouse design
 - [docs/data-sources.md](./docs/data-sources.md) — catalog of external data sources
