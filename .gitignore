@@ -1,0 +1,97 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ---------- Virtual environments ----------
+.venv/
+venv/
+env/
+ENV/
+.python-version.local
+
+# ---------- uv / poetry ----------
+.uv/
+uv.lock
+# Keep uv.lock committed once we have a real pyproject.toml; remove this line then.
+
+# ---------- Testing / coverage ----------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+
+# ---------- dbt ----------
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+dbt/.user.yml
+dbt/profiles.yml          # contains connection secrets; use profiles.yml.example
+
+# ---------- Secrets / credentials ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# ---------- Data / artifacts ----------
+# Local scratch data should never be committed. Use R2 for shared bronze.
+data/
+local-cache/
+*.parquet
+*.duckdb
+*.wal
+mlruns/
+mlflow/
+models/local/
+
+# ---------- Jupyter ----------
+.ipynb_checkpoints/
+*.ipynb.lock
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------- Editors / IDEs ----------
+.vscode/
+!.vscode/settings.shared.json
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# ---------- Claude Code ----------
+.claude/local/
+.claude/sessions/
+
+# ---------- Frontend (V2) ----------
+node_modules/
+.next/
+out/
+.vercel/
+.netlify/

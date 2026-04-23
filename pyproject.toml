@@ -1,0 +1,83 @@
+[project]
+name = "nhl-betting-model"
+version = "0.0.0"
+description = "PuckBunny — predictive modeling and betting analytics. Phase 1 scope: NHL."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+authors = [{ name = "Jon Crenshaw" }]
+
+# Runtime dependencies are intentionally empty until M1 lands actual code.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.6",
+  "mypy>=1.10",
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# ---------------------------------------------------------------------
+# Tooling config
+# ---------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [
+  "dbt/target",
+  "dbt/dbt_packages",
+  "data",
+  "local-cache",
+  ".venv",
+]
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes
+  "I",   # isort
+  "B",   # flake8-bugbear
+  "UP",  # pyupgrade
+  "C4",  # flake8-comprehensions
+  "SIM", # flake8-simplify
+  "ARG", # flake8-unused-arguments
+  "PTH", # flake8-use-pathlib
+  "TCH", # flake8-type-checking
+  "RUF", # ruff-specific
+]
+ignore = [
+  "E501",  # line length — ruff format already handles long lines
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ARG"]   # pytest fixtures often show as unused args
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+# Relax strictness on third-party code without type stubs.
+[[tool.mypy.overrides]]
+module = ["duckdb.*", "dagster.*", "dbt.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra --strict-markers --strict-config"
+testpaths = ["tests"]
+markers = [
+  "slow: tests that are slow (deselect with '-m \"not slow\"')",
+  "integration: tests that hit external services or real databases",
+]

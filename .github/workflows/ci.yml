@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same branch
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # -------------------------------------------------------------------
+  # Lint / format / test Python code. Conditional on src/ existing so
+  # the CI passes cleanly during the docs-only phase.
+  # -------------------------------------------------------------------
+  python:
+    name: Python lint & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for Python code
+        id: detect
+        run: |
+          if [ -d "src" ] || [ -f "pyproject.toml" ]; then
+            echo "has_python=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_python=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        if: steps.detect.outputs.has_python == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        if: steps.detect.outputs.has_python == 'true'
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install project
+        if: steps.detect.outputs.has_python == 'true'
+        run: |
+          if [ -f "pyproject.toml" ]; then
+            uv sync --all-extras --dev || uv pip install --system ruff mypy pytest
+          fi
+
+      - name: Ruff format check
+        if: steps.detect.outputs.has_python == 'true'
+        run: uvx ruff format --check .
+
+      - name: Ruff lint
+        if: steps.detect.outputs.has_python == 'true'
+        run: uvx ruff check .
+
+      - name: Pytest
+        if: steps.detect.outputs.has_python == 'true' && hashFiles('tests/**/*.py') != ''
+        run: uv run pytest -q
+
+  # -------------------------------------------------------------------
+  # Lint SQL via sqlfluff once a dbt project exists.
+  # -------------------------------------------------------------------
+  sql:
+    name: SQL lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for dbt project
+        id: detect
+        run: |
+          if [ -d "dbt" ] && [ -f "dbt/dbt_project.yml" ]; then
+            echo "has_dbt=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_dbt=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        if: steps.detect.outputs.has_dbt == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install sqlfluff
+        if: steps.detect.outputs.has_dbt == 'true'
+        run: pip install "sqlfluff[dbt]" dbt-core dbt-duckdb
+
+      - name: sqlfluff lint
+        if: steps.detect.outputs.has_dbt == 'true'
+        run: sqlfluff lint dbt/models --dialect duckdb
+
+  # -------------------------------------------------------------------
+  # Always-on sanity checks. These run on every PR.
+  # -------------------------------------------------------------------
+  hygiene:
+    name: Repo hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true   # warn-only until we know baseline is clean
+
+      - name: Check no large files committed
+        run: |
+          # Fail if any file > 5MB lands in the repo.
+          large=$(find . -type f -not -path "./.git/*" -size +5M || true)
+          if [ -n "$large" ]; then
+            echo "Large files detected:"
+            echo "$large"
+            exit 1
+          fi
