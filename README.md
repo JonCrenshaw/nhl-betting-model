@@ -39,9 +39,12 @@ Python 3.12, managed with [`uv`](https://docs.astral.sh/uv/). After cloning:
 
 ```
 uv sync
+pre-commit install
 ```
 
-This installs all dependencies (including dev extras) from `uv.lock` into a local `.venv`. The lockfile is committed to guarantee reproducible installs across machines and CI. If you update dependencies in `pyproject.toml`, run `uv sync` again to refresh the lockfile and commit both files together.
+`uv sync` installs all dependencies (including dev extras) from `uv.lock` into a local `.venv`. The lockfile is committed to guarantee reproducible installs across machines and CI. If you update dependencies in `pyproject.toml`, run `uv sync` again to refresh the lockfile and commit both files together.
+
+`pre-commit install` wires up the Git hook that runs formatting, linting, and secret scanning on staged files before each commit. Run `pre-commit run --all-files` to check the whole repo on demand, and `pre-commit autoupdate` to bump hook pins.
 
 ## Ownership
 - Owner: Jon Crenshaw
