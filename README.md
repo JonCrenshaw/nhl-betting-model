@@ -33,6 +33,16 @@ A predictive modeling and betting analytics product. Identifies +EV (positive ex
 - [docs/decisions/](./docs/decisions/) — Architecture Decision Records (ADRs)
 - [docs/ideas/](./docs/ideas/) — parking lot for unscoped ideas
 
+## Local development
+
+Python 3.12, managed with [`uv`](https://docs.astral.sh/uv/). After cloning:
+
+```
+uv sync
+```
+
+This installs all dependencies (including dev extras) from `uv.lock` into a local `.venv`. The lockfile is committed to guarantee reproducible installs across machines and CI. If you update dependencies in `pyproject.toml`, run `uv sync` again to refresh the lockfile and commit both files together.
+
 ## Ownership
 - Owner: Jon Crenshaw
 - Time budget: ~10 hours/week

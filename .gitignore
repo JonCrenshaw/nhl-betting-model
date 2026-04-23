@@ -22,8 +22,7 @@ ENV/
 
 # ---------- uv / poetry ----------
 .uv/
-uv.lock
-# Keep uv.lock committed once we have a real pyproject.toml; remove this line then.
+# uv.lock is committed for reproducibility. See README "Local development".
 
 # ---------- Testing / coverage ----------
 .pytest_cache/

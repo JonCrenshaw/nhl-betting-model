@@ -22,6 +22,13 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# No Python source ships yet. Treat this as a dependency manifest only so
+# `uv sync` installs deps into .venv without trying to build the project.
+# Remove `package = false` once src/nhl_betting_model/ exists and we want
+# editable installs of the project itself.
+[tool.uv]
+package = false
+
 # ---------------------------------------------------------------------
 # Tooling config
 # ---------------------------------------------------------------------
