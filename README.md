@@ -26,6 +26,7 @@ A predictive modeling and betting analytics product. Identifies +EV (positive ex
 ## Where to start
 - [CLAUDE.md](./CLAUDE.md) — working agreements for Claude Code sessions
 - [docs/working-with-claude.md](./docs/working-with-claude.md) — how Jon gets the most out of Claude across sessions
+- [docs/development.md](./docs/development.md) — setup, workflow, and command reference
 - [docs/roadmap.md](./docs/roadmap.md) — phased milestones and timeline
 - [docs/architecture/data-warehouse.md](./docs/architecture/data-warehouse.md) — warehouse design
 - [docs/data-sources.md](./docs/data-sources.md) — catalog of external data sources
@@ -39,12 +40,10 @@ Python 3.12, managed with [`uv`](https://docs.astral.sh/uv/). After cloning:
 
 ```
 uv sync
-pre-commit install
+uv run pre-commit install
 ```
 
-`uv sync` installs all dependencies (including dev extras) from `uv.lock` into a local `.venv`. The lockfile is committed to guarantee reproducible installs across machines and CI. If you update dependencies in `pyproject.toml`, run `uv sync` again to refresh the lockfile and commit both files together.
-
-`pre-commit install` wires up the Git hook that runs formatting, linting, and secret scanning on staged files before each commit. Run `pre-commit run --all-files` to check the whole repo on demand, and `pre-commit autoupdate` to bump hook pins.
+See [docs/development.md](./docs/development.md) for the full workflow, command cheatsheet, dependency-management rules, and known gotchas.
 
 ## Ownership
 - Owner: Jon Crenshaw
