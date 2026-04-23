@@ -81,6 +81,54 @@ Day-to-day commands and what they do:
 
 ---
 
+## dbt
+
+The dbt project lives in `dbt/`. Local runs use DuckDB; production uses
+MotherDuck. Both via the `dbt-duckdb` adapter. See
+[ADR-0001](./decisions/0001-warehouse-stack.md) for the warehouse rationale
+and `dbt/profiles.yml.example` for the connection shape.
+
+**First-time dbt setup**
+
+1. Copy `dbt/profiles.yml.example` to `dbt/profiles.yml` (or `~/.dbt/profiles.yml`).
+   The project-local file is gitignored, so credentials stay local.
+2. Fill in the `dev` target's file path if you want it somewhere other than
+   `./data/puckbunny.duckdb`.
+3. For the `prod` target and for reading bronze from R2, set the relevant
+   env vars: `MOTHERDUCK_TOKEN`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`,
+   `R2_SECRET_ACCESS_KEY`.
+
+**Running dbt**
+
+All commands run from the `dbt/` directory (or pass `--project-dir dbt`):
+
+- `uv run dbt debug` — verify the connection to your configured target.
+- `uv run dbt parse` — parse the project without executing models. Fast sanity
+  check after editing models or macros.
+- `uv run dbt run` — materialize all models against the current target.
+- `uv run dbt run -s stg_nhl_api__games` — run a single model by name.
+- `uv run dbt test` — run all configured tests.
+- `uv run dbt build` — parse + run + test in one shot. The daily pipeline
+  will wrap this.
+- `uv run dbt clean` — delete `target/` and `dbt_packages/`.
+
+**sqlfluff**
+
+- `uv run sqlfluff lint dbt/` — lint every SQL file under `dbt/` using the
+  config in `.sqlfluff`. Mirrors the pre-commit hook and the CI sql job.
+- `uv run sqlfluff fix dbt/` — auto-fix lint violations where possible.
+  Review the diff before committing — sqlfluff's rewrites are usually
+  correct but not always what you want stylistically.
+
+**Naming conventions** are enforced by code review, not tooling:
+
+- `stg_<source>__<entity>` — staging layer
+- `int_<entity>__<purpose>` — intermediate
+- `fct_<entity>` / `dim_<entity>` / `mart_<domain>__<entity>` — marts
+
+Every model lives alongside a `schema.yml` describing columns and declaring
+at least a `unique` + `not_null` pair on the primary key of fact tables.
+
 ## `pre-commit` commands
 
 - `uv run pre-commit run --all-files` — run every configured hook against the entire
@@ -144,6 +192,10 @@ default. If they're not being installed, check that `pyproject.toml` still decla
 the group correctly and that your `uv` is `0.4.27` or newer. The pre-PEP-735 form —
 `[project.optional-dependencies].dev` — required `uv sync --all-extras` and we
 explicitly migrated away from it.
+
+### `dbt debug` fails with "Profile puckbunny not found"
+You haven't created `dbt/profiles.yml` yet. Copy it from
+`dbt/profiles.yml.example` and fill in values. The real file is gitignored.
 
 ### `Failed to build nhl-betting-model` on first sync
 `[tool.uv] package = false` in `pyproject.toml` tells uv not to treat the project

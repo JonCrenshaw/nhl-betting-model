@@ -1,0 +1,46 @@
+# Example dbt profile for PuckBunny. Copy this file to one of:
+#   - ./profiles.yml          (project-local; gitignored by .gitignore)
+#   - ~/.dbt/profiles.yml     (user-global)
+# and fill in real values. Never commit the real file.
+#
+# `dev` target: local DuckDB file, fast, zero cost.
+# `prod` target: MotherDuck via motherduck_token env var.
+# Both targets use the dbt-duckdb adapter (ADR-0001).
+
+puckbunny:
+  target: dev
+
+  outputs:
+    dev:
+      type: duckdb
+      # Path to the local DuckDB file. .gitignore already excludes *.duckdb
+      # and the data/ directory, so nothing here gets committed accidentally.
+      path: "./data/puckbunny.duckdb"
+      threads: 4
+      # R2 credentials enable httpfs reads of bronze Parquet during dev.
+      # Leave unset locally if you only work on silver/gold from cached data.
+      extensions:
+        - httpfs
+        - parquet
+      settings:
+        s3_endpoint: "{{ env_var('R2_ENDPOINT', '') }}"
+        s3_region: "auto"
+        s3_access_key_id: "{{ env_var('R2_ACCESS_KEY_ID', '') }}"
+        s3_secret_access_key: "{{ env_var('R2_SECRET_ACCESS_KEY', '') }}"
+        s3_url_style: "path"
+
+    prod:
+      type: duckdb
+      # MotherDuck connection string. The token is read from env var so this
+      # file stays credential-free.
+      path: "md:puckbunny?motherduck_token={{ env_var('MOTHERDUCK_TOKEN') }}"
+      threads: 4
+      extensions:
+        - httpfs
+        - parquet
+      settings:
+        s3_endpoint: "{{ env_var('R2_ENDPOINT', '') }}"
+        s3_region: "auto"
+        s3_access_key_id: "{{ env_var('R2_ACCESS_KEY_ID', '') }}"
+        s3_secret_access_key: "{{ env_var('R2_SECRET_ACCESS_KEY', '') }}"
+        s3_url_style: "path"
