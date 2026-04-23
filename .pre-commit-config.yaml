@@ -28,6 +28,15 @@ repos:
         args: [--fix]
       - id: ruff-format
 
+  # SQL lint. Uses the jinja templater (see .sqlfluff) so no dbt compilation
+  # is required. Scoped to dbt/*.sql files only.
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 4.1.0
+    hooks:
+      - id: sqlfluff-lint
+        files: ^dbt/
+        types: [sql]
+
   # Secret scanning — deferred. The official gitleaks pre-commit hook uses
   # `language: golang`, which makes pre-commit download a Go SDK from go.dev
   # to build the binary. That download fails on this machine (SSL EOF /
