@@ -28,6 +28,7 @@ A predictive modeling and betting analytics product. Identifies +EV (positive ex
 - [docs/roadmap.md](./docs/roadmap.md) — phased milestones and timeline
 - [docs/architecture/data-warehouse.md](./docs/architecture/data-warehouse.md) — warehouse design
 - [docs/data-sources.md](./docs/data-sources.md) — catalog of external data sources
+- [docs/costs/](./docs/costs/) — cost tracking (budget, recurring services, expense log)
 - [docs/decisions/](./docs/decisions/) — Architecture Decision Records (ADRs)
 - [docs/ideas/](./docs/ideas/) — parking lot for unscoped ideas
 
