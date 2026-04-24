@@ -36,14 +36,12 @@ A predictive modeling and betting analytics product. Identifies +EV (positive ex
 
 ## Local development
 
-Python 3.12, managed with [`uv`](https://docs.astral.sh/uv/). After cloning:
+Two paths, both supported:
 
-```
-uv sync
-uv run pre-commit install
-```
+- **Local.** Python 3.12 managed with [`uv`](https://docs.astral.sh/uv/). From the repo root, run `uv sync` then `uv run pre-commit install`.
+- **Dev Container.** Open in VS Code and pick "Dev Containers: Reopen in Container". Zero local setup beyond Docker Desktop.
 
-See [docs/development.md](./docs/development.md) for the full workflow, command cheatsheet, dependency-management rules, and known gotchas.
+See [docs/development.md](./docs/development.md) for the full workflow, command cheatsheet, dependency-management rules, and known gotchas. Rationale in [ADR-0002](./docs/decisions/0002-development-environment.md).
 
 ## Ownership
 - Owner: Jon Crenshaw

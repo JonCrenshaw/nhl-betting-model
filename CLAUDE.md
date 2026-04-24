@@ -113,6 +113,20 @@ At the start of any substantive session, Claude should:
 
 ---
 
+## Cross-mount file safety (Claude)
+
+Jon works on Windows; an optional Linux devcontainer bind-mounts the workspace. Claude can see the repo from both sides: the Read/Write/Edit file tools talk to the Windows filesystem directly, while the bash tool runs inside the Linux container and reads the same files through a bind mount.
+
+Known hazard: the Linux side can serve **truncated** views of a file when the Windows side hasn't finished flushing — the tail of the file is silently missing, with no error from either OS. If Claude reads a file through the Linux side and writes that view back, it can overwrite the full Windows file with a fragment. In one session this corrupted `.git/config` (16 of 47 lines), which broke every git tool on the repo — CLI, GitHub Desktop, VS Code Source Control, pre-commit — until the file was manually reconstructed.
+
+Rules:
+- Use Windows-side file tools (Read/Write/Edit) for anything where file content authority matters. They are the source of truth.
+- Use the Linux bash tool for command execution (running scripts, git, tests, dbt, uv) — not as a read-then-write pipeline for file contents.
+- Never round-trip a file through the Linux side to "preserve" or "back up" its state. If a backup is needed, copy it via a Windows-side tool.
+- If a file appears different between the two views, trust the Windows side.
+
+---
+
 ## Decision records (ADRs)
 
 Any non-trivial architectural choice goes in `docs/decisions/` as a numbered file. Format is in [docs/decisions/README.md](./docs/decisions/README.md). ADRs are append-only: never delete, supersede with a new one.
