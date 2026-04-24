@@ -6,6 +6,24 @@ for how Jon and Claude collaborate see [working-with-claude.md](./working-with-c
 
 ---
 
+## Two paths: local or Dev Container
+
+You can work on this repo two ways. Both are supported; neither is preferred
+unless you hit platform-specific issues.
+
+- **Local (Jon's default).** Install tooling on your own machine. Instructions
+  below. Fast feedback, uses your normal editor and shell.
+- **Dev Container.** Open the repo in VS Code and pick "Dev Containers:
+  Reopen in Container". Everything — Python, uv, dbt, sqlfluff, pre-commit
+  — is installed inside a Linux container with zero local setup beyond
+  Docker Desktop and the Dev Containers extension. Same config powers
+  GitHub Codespaces (browser-based dev) if you ever turn that on. See
+  [ADR-0002](./decisions/0002-development-environment.md) for the rationale.
+
+The container is the escape hatch when a Windows-specific issue blocks you
+(like the Go-SDK download failure we hit during PR 2's gitleaks setup —
+that would just work inside the container).
+
 ## First-time setup
 
 From the repo root, in any shell (PowerShell, bash, zsh, the VS Code integrated terminal):
@@ -196,6 +214,125 @@ explicitly migrated away from it.
 ### `dbt debug` fails with "Profile puckbunny not found"
 You haven't created `dbt/profiles.yml` yet. Copy it from
 `dbt/profiles.yml.example` and fill in values. The real file is gitignored.
+This applies equally to local setups and the Dev Container — the container
+intentionally does not ship credentials.
+
+### Dev Container: pre-commit hook is host-managed (and the "poisoning" failure mode)
+Hook installation on a Windows host + Linux container is a minefield.
+`post-create.sh` deliberately **skips** `pre-commit install` when
+`.git/hooks/pre-commit` already exists so the host's working hook stays
+intact. Why this matters:
+
+When `pre-commit install` runs inside the container against a
+Windows-host-bind-mounted `.git/`, pre-commit first rewrites the hook file
+(embedding a Linux Python path like `/home/vscode/.../venv/bin/python`),
+then tries to `chmod +x` it. The chmod fails with `EPERM` because of
+Docker Desktop's NTFS permission translation — but **the content
+replacement already happened**. The hook is now left pointing at a Linux
+path that doesn't exist on the Windows host, and the next commit from
+PowerShell fails with `pre-commit: command not found` or similar.
+
+So:
+- **Install the hook from the host, once.** `uv run pre-commit install`
+  from PowerShell (or your host shell) wires `.git/hooks/pre-commit` to
+  the host's Python. `post-create.sh` then sees it exists and leaves it
+  alone on every container create/rebuild.
+- **Commits from inside the container**: the host's hook may or may not
+  resolve depending on how Python is embedded. To be safe, run
+  `uv run pre-commit run --all-files` manually before committing from
+  inside the container.
+- **If the hook gets poisoned** (e.g., a previous container build wrote
+  Linux paths into it), fix it from the host:
+  `uv run pre-commit install -f`. The `-f` forces a rewrite with the
+  host's Python path.
+
+### Dev Container: host `.venv` breaks after a container run, or `Access is denied` on `.venv\lib64`
+Symptom on the Windows host after using the devcontainer:
+
+```
+error: failed to remove file `D:\...\nhl-betting-model\.venv\lib64`: Access is denied.
+```
+
+Root cause (historical — fixed going forward): earlier versions of
+`devcontainer.json` had no mount override for `.venv`, so the container's
+`uv sync` wrote a Linux-layout venv into the bind-mounted workspace. That
+clobbered the host's Windows venv with incompatible binaries (`.venv/bin/`
+instead of `.venv/Scripts/`) and left a `lib64` symlink NTFS can't delete.
+
+The fix (already in `.devcontainer/devcontainer.json`) is a named-volume
+mount at `${containerWorkspaceFolder}/.venv`, which gives the container its
+own isolated venv directory. Host `.venv` and container `.venv` are now
+fully independent.
+
+**If you're hitting this today** on a repo that was used with the old
+config, nuke and rebuild the host venv:
+
+```powershell
+# Stop Docker Desktop first if a container is still holding handles.
+cmd /c "rmdir /s /q .venv"
+uv sync
+uv run pre-commit install -f
+```
+
+### PowerShell: `uv` not recognized, or `.venv\Scripts\Activate.ps1` not found
+A pair of errors you may see in a new PowerShell terminal — often together,
+right after rebuilding `.venv` — that look scary but have boring causes.
+
+```
+& : The term 'D:\...\.venv\Scripts\Activate.ps1' is not recognized ...
+uv : The term 'uv' is not recognized ...
+```
+
+**`Activate.ps1` not recognized.** VS Code's Python extension tries to
+auto-activate the selected interpreter in every new terminal. If `.venv/`
+has been deleted, or it's a Linux-layout venv (has `.venv/bin/`, no
+`.venv/Scripts/`), the auto-activate line fails. The error is cosmetic —
+it disappears on its own once `.venv\Scripts\Activate.ps1` exists again
+after the next `uv sync`. No VS Code setting needs to change.
+
+**`uv` not recognized.** Either `uv` isn't installed on the Windows host
+yet (the devcontainer has its own uv; the host may never have gotten
+one), or it was just installed and `%USERPROFILE%\.local\bin` isn't on
+this terminal's PATH yet. Terminal environment variables are snapshot at
+terminal start — a fresh install only shows up in terminals opened after
+it.
+
+Recovery sequence (Windows host, PowerShell, from the repo root):
+
+```powershell
+# 1. Confirm .venv is actually gone. Expected: False.
+Test-Path .venv
+# If True, remove it:
+Remove-Item -Recurse -Force .venv
+
+# 2. Install uv if Get-Command returns nothing:
+Get-Command uv -ErrorAction SilentlyContinue
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+# Close this terminal and open a new PowerShell so PATH refreshes.
+uv --version
+
+# 3. Build a Windows-native venv.
+uv sync
+
+# 4. Rewrite the pre-commit hook with the Windows Python path.
+uv run pre-commit install -f
+
+# 5. Smoke test.
+uv run pre-commit run --all-files
+```
+
+The "close terminal after installing uv" step is the one people miss. The
+installer adds uv to `%USERPROFILE%\.local\bin` and updates the user PATH,
+but already-open terminals keep their stale PATH until they're restarted.
+
+### Dev Container: `uv sync --frozen` fails on container create
+The lockfile and `pyproject.toml` have drifted. Someone changed `pyproject.toml`
+without re-running `uv sync` locally. Fix: pull main, run `uv sync` locally,
+commit the updated `uv.lock`. Rebuild the container after merging.
+
+### Dev Container: extensions didn't install / VS Code doesn't see the venv
+Rebuild the container: "Dev Containers: Rebuild Container" from the VS Code
+command palette. This re-runs `post-create.sh` cleanly.
 
 ### `Failed to build nhl-betting-model` on first sync
 `[tool.uv] package = false` in `pyproject.toml` tells uv not to treat the project
