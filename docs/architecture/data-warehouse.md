@@ -70,7 +70,7 @@ Decision record: [ADR-0001](../decisions/0001-warehouse-stack.md)
 
 **Layout.**
 ```
-r2://nhl-bet-lake/
+r2://puckbunny-lake/
 ├── bronze/
 │   ├── nhl_api/
 │   │   ├── games/ingest_date=2026-04-22/games.parquet

@@ -16,23 +16,28 @@ Draft. Dates are indicative only, based on ~10 hrs/week solo time starting April
 - Operational cost under $50/month.
 - Architecture passes a "port to MLB" thought experiment — no rewrite required, only new loaders.
 
+### Current status
+
+- **M1 — complete** (April 2026). Repo, devcontainer (ADR-0002), `uv`, dbt scaffold, pre-commit hooks, and CI all landed on `main`. One deferred item parked in `docs/ideas/gitleaks-local-hook.md`.
+- **M2 — kicking off.** Plan committed at `docs/milestones/m2-nhl-ingestion.md`. R2 bucket `puckbunny-lake` provisioned and credentialed. Python package name locked to `puckbunny`. Timeline extended from 2–3 weeks to 4 weeks so season-scoped loaders stay in scope. Next action: PR-A spike against `api-web.nhle.com`.
+
 ### Milestones
 
-| # | Milestone | Exit criteria | Rough effort |
-|---|-----------|---------------|--------------|
-| M1 | Repo & local environment | GitHub repo, devcontainer, `uv` project, dbt scaffold, pre-commit hooks, CI running tests & linters on PR | 1–2 weeks |
-| M2 | NHL API ingestion | Historical game, skater, goalie, and PxP data loaded into bronze. Incremental daily loader. Partitioned Parquet in object storage. | 2–3 weeks |
-| M3 | Silver layer & sport-agnostic schema | Conformed entities: `sport`, `league`, `team`, `player`, `game`, `event`, `market`, `odds`. dbt tests passing. | 2 weeks |
-| M4 | Odds ingestion | The Odds API daily pulls into bronze → silver `odds` table. Historical odds dataset purchased and loaded. | 1–2 weeks |
-| M5 | Feature engineering v1 | Gold-layer features: team strength (Elo, xG-based), goaltender form, lineup/injury adjustment, rest/travel/fatigue, home-away, b2b. | 3–4 weeks |
-| M6 | Baseline Elo+ model | Reproduce prior Elo work in this pipeline. Backtest harness operational. First CLV numbers logged. | 1–2 weeks |
-| M7 | Rate model + score simulator | Bivariate Poisson (or comparable) over rate predictions. Generate full game distributions; price ML / total / spread from one model. | 3–4 weeks |
-| M8 | Player prop extension | Shots, goals-in-first-10, 1+ other prop priced from player distributional models layered on team rates. | 2–3 weeks |
-| M9 | Calibration & bet selection | Platt/isotonic calibration. Kelly fractional or configurable sizing. Pick generation logic with explicit EV threshold. | 1–2 weeks |
-| M10 | Daily automated pipeline | Dagster assets for full ingest → features → predictions → picks → storage. Runs on schedule without Jon's laptop. | 2 weeks |
-| M11 | Internal dashboard | Streamlit or Evidence page showing today's picks, current CLV, backtest history, model health. | 1 week |
-| M12 | Paper trade | Log simulated bets for 4–8 weeks of live games. Evaluate CLV distribution. | Ongoing during NHL season |
-| M13 | Live betting & limitation event | Begin betting real money on one or more major books. Target: account limitation. | Ongoing during NHL season |
+| # | Milestone | Status | Exit criteria | Rough effort |
+|---|-----------|--------|---------------|--------------|
+| M1 | Repo & local environment | ✅ Complete | GitHub repo, devcontainer, `uv` project, dbt scaffold, pre-commit hooks, CI running tests & linters on PR | 1–2 weeks |
+| M2 | NHL API ingestion | 🟡 In progress | Historical game, skater, goalie, and PxP data loaded into bronze. Incremental daily loader. Partitioned Parquet in object storage. | 4 weeks (revised) |
+| M3 | Silver layer & sport-agnostic schema | ⬜ Not started | Conformed entities: `sport`, `league`, `team`, `player`, `game`, `event`, `market`, `odds`. dbt tests passing. | 2 weeks |
+| M4 | Odds ingestion | ⬜ Not started | The Odds API daily pulls into bronze → silver `odds` table. Historical odds dataset purchased and loaded. | 1–2 weeks |
+| M5 | Feature engineering v1 | ⬜ Not started | Gold-layer features: team strength (Elo, xG-based), goaltender form, lineup/injury adjustment, rest/travel/fatigue, home-away, b2b. | 3–4 weeks |
+| M6 | Baseline Elo+ model | ⬜ Not started | Reproduce prior Elo work in this pipeline. Backtest harness operational. First CLV numbers logged. | 1–2 weeks |
+| M7 | Rate model + score simulator | ⬜ Not started | Bivariate Poisson (or comparable) over rate predictions. Generate full game distributions; price ML / total / spread from one model. | 3–4 weeks |
+| M8 | Player prop extension | ⬜ Not started | Shots, goals-in-first-10, 1+ other prop priced from player distributional models layered on team rates. | 2–3 weeks |
+| M9 | Calibration & bet selection | ⬜ Not started | Platt/isotonic calibration. Kelly fractional or configurable sizing. Pick generation logic with explicit EV threshold. | 1–2 weeks |
+| M10 | Daily automated pipeline | ⬜ Not started | Dagster assets for full ingest → features → predictions → picks → storage. Runs on schedule without Jon's laptop. | 2 weeks |
+| M11 | Internal dashboard | ⬜ Not started | Streamlit or Evidence page showing today's picks, current CLV, backtest history, model health. | 1 week |
+| M12 | Paper trade | ⬜ Not started | Log simulated bets for 4–8 weeks of live games. Evaluate CLV distribution. | Ongoing during NHL season |
+| M13 | Live betting & limitation event | ⬜ Not started | Begin betting real money on one or more major books. Target: account limitation. | Ongoing during NHL season |
 
 ### Out of scope for Phase 1
 - Public-facing website or app
