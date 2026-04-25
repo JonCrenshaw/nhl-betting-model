@@ -1,0 +1,75 @@
+// Dev Container for PuckBunny. See docs/decisions/0002-development-environment.md
+// for rationale and docs/development.md for the user-facing workflow.
+//
+// Opens in VS Code via "Dev Containers: Reopen in Container", or in GitHub
+// Codespaces directly (same spec). Matches Jon's local Windows setup where
+// practical so behavior is consistent across both environments.
+{
+  "name": "PuckBunny dev",
+
+  // Debian bookworm slim with Python 3.12 pre-installed. Matches .python-version
+  // and pyproject.toml's requires-python = ">=3.12". Bump the tag when the
+  // project moves to a newer Python.
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
+
+  "features": {
+    // gh CLI for PR workflows from inside the container.
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  // Runs once after the container is created. Installs uv, syncs deps from
+  // the committed lockfile, and wires up the pre-commit git hook.
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  // Keep the container's .venv out of the bind-mounted workspace.
+  // Without this, `uv sync` inside the container writes a Linux-layout venv
+  // into the Windows host's D:\...\nhl-betting-model\.venv, which (a) breaks
+  // the host's Windows venv with incompatible binaries and (b) leaves
+  // lib64 symlinks Windows can't delete. A named volume gives the container
+  // its own isolated venv directory at the same in-container path, so
+  // `.venv/bin/python` resolves without touching the host filesystem.
+  "mounts": [
+    "source=puckbunny-venv,target=${containerWorkspaceFolder}/.venv,type=volume"
+  ],
+
+  // Non-root user from the base image. uv installs to $HOME/.local/bin which
+  // is on this user's PATH.
+  "remoteUser": "vscode",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Python core.
+        "ms-python.python",
+        "ms-python.mypy-type-checker",
+
+        // Lint + format. Matches what pre-commit and CI enforce.
+        "charliermarsh.ruff",
+
+        // dbt + SQL.
+        "innoverio.vscode-dbt-power-user",
+        "dorzey.vscode-sqlfluff",
+
+        // Editing CI workflows.
+        "github.vscode-github-actions"
+      ],
+      "settings": {
+        // Point VS Code at the uv-managed venv so "Run Python" / tests find
+        // the right interpreter.
+        "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
+        "python.terminal.activateEnvironment": true,
+
+        // Ruff as both linter and formatter for Python.
+        "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        },
+        "ruff.organizeImports": true,
+
+        // Show sqlfluff diagnostics inline for .sql files.
+        "sqlfluff.dialect": "duckdb",
+        "sqlfluff.linter.run": "onType"
+      }
+    }
+  }
+}

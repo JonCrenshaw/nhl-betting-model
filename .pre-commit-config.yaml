@@ -1,0 +1,53 @@
+# Pre-commit hooks for PuckBunny.
+#
+# Install:      uv sync && pre-commit install
+# Run all:      pre-commit run --all-files
+# Update pins:  pre-commit autoupdate
+#
+# See https://pre-commit.com for documentation on the framework.
+
+repos:
+  # Generic hygiene hooks. These are cheap and catch common mistakes.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        # Matches the 5 MB ceiling enforced in CI's hygiene job.
+        args: [--maxkb=5120]
+
+  # Python lint + format. Mirrors the ruff checks CI runs.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.11
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # SQL lint. Uses the jinja templater (see .sqlfluff) so no dbt compilation
+  # is required. Scoped to dbt/*.sql files only.
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 4.1.0
+    hooks:
+      - id: sqlfluff-lint
+        files: ^dbt/
+        types: [sql]
+
+  # Secret scanning — deferred. The official gitleaks pre-commit hook uses
+  # `language: golang`, which makes pre-commit download a Go SDK from go.dev
+  # to build the binary. That download fails on this machine (SSL EOF /
+  # BadZipFile), likely due to a middlebox interfering with go.dev.
+  #
+  # Coverage is not lost: CI's hygiene job runs gitleaks on every PR. We'll
+  # add a local hook in a follow-up PR — see docs/ideas/gitleaks-local-hook.md.
+  # - repo: https://github.com/gitleaks/gitleaks
+  #   rev: v8.30.0
+  #   hooks:
+  #     - id: gitleaks
+
+# sqlfluff is intentionally not wired up here yet — it will join this config
+# in the dbt-init PR, scoped to ^dbt/ once there is SQL to lint.

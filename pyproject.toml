@@ -10,12 +10,20 @@ authors = [{ name = "Jon Crenshaw" }]
 # Runtime dependencies are intentionally empty until M1 lands actual code.
 dependencies = []
 
-[project.optional-dependencies]
+# Dev tooling lives in a PEP 735 dependency group, not as a project extra,
+# so `uv sync` installs it by default without needing `--all-extras`.
+[dependency-groups]
 dev = [
   "ruff>=0.6",
   "mypy>=1.10",
   "pytest>=8.0",
   "pytest-cov>=5.0",
+  "pre-commit>=3.7",
+  # dbt + warehouse adapter. ADR-0001.
+  "dbt-core>=1.8",
+  "dbt-duckdb>=1.8",
+  # SQL lint. Matches the pre-commit hook and the CI sql job.
+  "sqlfluff>=3.2",
 ]
 
 [build-system]

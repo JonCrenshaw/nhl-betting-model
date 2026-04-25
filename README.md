@@ -26,6 +26,7 @@ A predictive modeling and betting analytics product. Identifies +EV (positive ex
 ## Where to start
 - [CLAUDE.md](./CLAUDE.md) — working agreements for Claude Code sessions
 - [docs/working-with-claude.md](./docs/working-with-claude.md) — how Jon gets the most out of Claude across sessions
+- [docs/development.md](./docs/development.md) — setup, workflow, and command reference
 - [docs/roadmap.md](./docs/roadmap.md) — phased milestones and timeline
 - [docs/architecture/data-warehouse.md](./docs/architecture/data-warehouse.md) — warehouse design
 - [docs/data-sources.md](./docs/data-sources.md) — catalog of external data sources
@@ -35,13 +36,12 @@ A predictive modeling and betting analytics product. Identifies +EV (positive ex
 
 ## Local development
 
-Python 3.12, managed with [`uv`](https://docs.astral.sh/uv/). After cloning:
+Two paths, both supported:
 
-```
-uv sync
-```
+- **Local.** Python 3.12 managed with [`uv`](https://docs.astral.sh/uv/). From the repo root, run `uv sync` then `uv run pre-commit install`.
+- **Dev Container.** Open in VS Code and pick "Dev Containers: Reopen in Container". Zero local setup beyond Docker Desktop.
 
-This installs all dependencies (including dev extras) from `uv.lock` into a local `.venv`. The lockfile is committed to guarantee reproducible installs across machines and CI. If you update dependencies in `pyproject.toml`, run `uv sync` again to refresh the lockfile and commit both files together.
+See [docs/development.md](./docs/development.md) for the full workflow, command cheatsheet, dependency-management rules, and known gotchas. Rationale in [ADR-0002](./docs/decisions/0002-development-environment.md).
 
 ## Ownership
 - Owner: Jon Crenshaw

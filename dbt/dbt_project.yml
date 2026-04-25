@@ -1,0 +1,41 @@
+# dbt project config for PuckBunny.
+#
+# Per ADR-0001: local development uses DuckDB, production uses MotherDuck,
+# both via dbt-duckdb. Bronze Parquet sits in Cloudflare R2 and is read
+# directly by DuckDB/MotherDuck via httpfs.
+#
+# The project is sport-agnostic from the silver layer up. Sport and league
+# are first-class columns on every silver/gold entity, never a path segment
+# or a schema prefix.
+
+name: "puckbunny"
+version: "0.1.0"
+config-version: 2
+
+# The profile named here must exist in profiles.yml. See profiles.yml.example.
+profile: "puckbunny"
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Layer defaults. Per-model overrides live inline in each .sql file or in a
+# schema.yml as config blocks.
+models:
+  puckbunny:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: ephemeral
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: marts
