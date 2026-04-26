@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 
 import structlog
 
 from puckbunny import logging_setup
 
+if TYPE_CHECKING:
+    import pytest
 
-def test_configure_logging_emits_json(capsys) -> None:
+
+def test_configure_logging_emits_json(capsys: pytest.CaptureFixture[str]) -> None:
     logging_setup.configure_logging(json_output=True, force=True)
     log = structlog.get_logger("puckbunny.test")
     log.info("hello", key="value", count=3)
@@ -24,7 +28,7 @@ def test_configure_logging_emits_json(capsys) -> None:
     assert "timestamp" in payload
 
 
-def test_configure_logging_is_idempotent(capsys) -> None:
+def test_configure_logging_is_idempotent(capsys: pytest.CaptureFixture[str]) -> None:
     logging_setup.configure_logging(json_output=True, force=True)
     logging_setup.configure_logging(json_output=True)  # no force — should be no-op
     log = structlog.get_logger("puckbunny.test")

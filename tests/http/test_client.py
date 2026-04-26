@@ -11,16 +11,19 @@ another dependency edit.
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import pytest
 
 from puckbunny.http.client import RateLimitedClient, RetryableStatusError
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 
 def _client(
-    handler,
+    handler: Callable[[httpx.Request], httpx.Response],
     *,
     rate_per_sec: float = 100.0,
     max_retries: int = 3,

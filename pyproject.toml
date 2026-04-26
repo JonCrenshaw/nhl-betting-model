@@ -105,6 +105,14 @@ warn_redundant_casts = true
 module = ["duckdb.*", "dagster.*", "dbt.*"]
 ignore_missing_imports = true
 
+# pyarrow's bundled type annotations are partial — ``pq.write_table`` /
+# ``pq.read_table`` are untyped, which trips ``disallow_untyped_calls``
+# in strict mode. We can't fix this by overriding pyarrow's checking
+# settings (overrides apply to checking *of* a module, not to calls
+# *into* it), so the two specific call sites carry per-line
+# ``# type: ignore[no-untyped-call]``. Revisit if pyarrow ships full
+# stubs or if we're willing to add ``pyarrow-stubs`` as a dev dep.
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 # ``--import-mode=importlib`` keeps pytest from inserting test subdirs

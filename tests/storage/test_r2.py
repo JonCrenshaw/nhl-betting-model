@@ -14,10 +14,12 @@ from puckbunny.config import Settings
 from puckbunny.storage.r2 import R2Credentials, R2ObjectStorage
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import pytest
 
 
-def _settings(monkeypatch: pytest.MonkeyPatch, tmp_path) -> Settings:
+def _settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Settings:
     monkeypatch.setenv("R2_ACCOUNT_ID", "acct")
     monkeypatch.setenv("R2_ACCESS_KEY_ID", "ak")
     monkeypatch.setenv("R2_SECRET_ACCESS_KEY", "sk")
@@ -26,7 +28,7 @@ def _settings(monkeypatch: pytest.MonkeyPatch, tmp_path) -> Settings:
     return Settings(_env_file=str(tmp_path / "nope.env"))  # type: ignore[call-arg]
 
 
-def test_credentials_from_settings(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_credentials_from_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     settings = _settings(monkeypatch, tmp_path)
     creds = R2Credentials.from_settings(settings)
     assert creds.bucket == "puckbunny-lake"
@@ -34,7 +36,7 @@ def test_credentials_from_settings(monkeypatch: pytest.MonkeyPatch, tmp_path) ->
     assert creds.endpoint_url == "https://acct.r2.cloudflarestorage.com"
 
 
-def test_r2_storage_constructible(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_r2_storage_constructible(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Smoke test: client construction does not raise."""
     settings = _settings(monkeypatch, tmp_path)
     storage = R2ObjectStorage.from_settings(settings)

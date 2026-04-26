@@ -12,13 +12,10 @@ import hashlib
 import io
 import json
 from datetime import UTC, date, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pyarrow.parquet as pq
 import pytest
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 from puckbunny.storage.local import LocalFilesystemStorage
 from puckbunny.storage.parquet import (
@@ -30,9 +27,12 @@ from puckbunny.storage.parquet import (
     write_envelope_partition,
 )
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
-def _make_envelope(**overrides) -> BronzeEnvelope:
-    base = {
+
+def _make_envelope(**overrides: Any) -> BronzeEnvelope:
+    base: dict[str, Any] = {
         "entity_id": "2025030123",
         "endpoint": "/v1/gamecenter/{gameId}/landing",
         "endpoint_params": {"gameId": 2025030123},
@@ -94,7 +94,7 @@ def test_envelope_round_trip_via_local_storage(tmp_path: Path) -> None:
     assert on_disk.exists()
 
     # Re-open and confirm schema + values.
-    table = pq.read_table(io.BytesIO(on_disk.read_bytes()))
+    table = pq.read_table(io.BytesIO(on_disk.read_bytes()))  # type: ignore[no-untyped-call]
     assert table.schema.equals(ENVELOPE_SCHEMA)
     assert table.num_rows == 2
     assert table.column("entity_id").to_pylist() == ["2025030123", "2025030124"]

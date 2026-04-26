@@ -151,7 +151,7 @@ def envelope_table_to_parquet_bytes(
     cost; not worth it at our volumes.
     """
     buf = io.BytesIO()
-    pq.write_table(
+    pq.write_table(  # type: ignore[no-untyped-call]
         table,
         buf,
         compression=compression,

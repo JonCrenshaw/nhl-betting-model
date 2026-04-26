@@ -88,14 +88,21 @@ class R2ObjectStorage:
         *,
         content_type: str | None = None,
     ) -> None:
-        kwargs: dict[str, object] = {
-            "Bucket": self._bucket,
-            "Key": key,
-            "Body": body,
-        }
+        # Two call shapes — boto3-stubs types ContentType as a Literal
+        # union, so we can't smuggle it through a kwargs ``dict``.
         if content_type is not None:
-            kwargs["ContentType"] = content_type
-        self._client.put_object(**kwargs)
+            self._client.put_object(
+                Bucket=self._bucket,
+                Key=key,
+                Body=body,
+                ContentType=content_type,
+            )
+        else:
+            self._client.put_object(
+                Bucket=self._bucket,
+                Key=key,
+                Body=body,
+            )
         self._log.info("r2_put_object", key=key, size_bytes=len(body))
 
     def get_object(self, key: str) -> bytes:

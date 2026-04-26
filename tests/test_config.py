@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 from pydantic import ValidationError
 
 from puckbunny.config import Settings, get_settings
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _REQUIRED_R2_ENV = {
     "R2_ACCOUNT_ID": "acct",
@@ -16,7 +21,7 @@ _REQUIRED_R2_ENV = {
 }
 
 
-def test_settings_loads_from_env(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_settings_loads_from_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     for k, v in _REQUIRED_R2_ENV.items():
         monkeypatch.setenv(k, v)
     # Point at a non-existent env file so monkeypatched env wins cleanly.
@@ -32,7 +37,7 @@ def test_settings_loads_from_env(monkeypatch: pytest.MonkeyPatch, tmp_path) -> N
     assert "PuckBunny" in settings.ingest_user_agent
 
 
-def test_missing_required_field_raises(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_missing_required_field_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     # Set everything except R2_BUCKET.
     for k, v in _REQUIRED_R2_ENV.items():
         if k == "R2_BUCKET":
@@ -45,7 +50,7 @@ def test_missing_required_field_raises(monkeypatch: pytest.MonkeyPatch, tmp_path
     assert "r2_bucket" in str(exc_info.value).lower()
 
 
-def test_rate_limit_must_be_positive(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_rate_limit_must_be_positive(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     for k, v in _REQUIRED_R2_ENV.items():
         monkeypatch.setenv(k, v)
     monkeypatch.setenv("INGEST_RATE_LIMIT_PER_SEC", "0")
