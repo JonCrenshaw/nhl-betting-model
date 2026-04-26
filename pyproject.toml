@@ -1,5 +1,5 @@
 [project]
-name = "nhl-betting-model"
+name = "puckbunny"
 version = "0.0.0"
 description = "PuckBunny — predictive modeling and betting analytics. Phase 1 scope: NHL."
 readme = "README.md"
@@ -7,8 +7,22 @@ requires-python = ">=3.12"
 license = { text = "Proprietary" }
 authors = [{ name = "Jon Crenshaw" }]
 
-# Runtime dependencies are intentionally empty until M1 lands actual code.
-dependencies = []
+# M2 PR-B introduces the first runtime dependencies. Keep this list lean —
+# every addition is reviewed for cost and footprint per CLAUDE.md.
+dependencies = [
+  # HTTP transport + retries.
+  "httpx>=0.27",
+  "tenacity>=9.0",
+  # Config + response validation.
+  "pydantic>=2.7",
+  "pydantic-settings>=2.4",
+  "python-dotenv>=1.0",       # explicit; pydantic-settings reads .env via this
+  # Logging.
+  "structlog>=24.1",
+  # Storage primitives.
+  "pyarrow>=17.0",
+  "boto3>=1.34",
+]
 
 # Dev tooling lives in a PEP 735 dependency group, not as a project extra,
 # so `uv sync` installs it by default without needing `--all-extras`.
@@ -24,18 +38,21 @@ dev = [
   "dbt-duckdb>=1.8",
   # SQL lint. Matches the pre-commit hook and the CI sql job.
   "sqlfluff>=3.2",
+  # M2 PR-B: VCR cassettes for HTTP-replay tests.
+  "pytest-recording>=0.13",
+  # M2 PR-B: stubs for boto3 so mypy --strict stays clean on storage/r2.py.
+  "boto3-stubs[s3]>=1.34",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# No Python source ships yet. Treat this as a dependency manifest only so
-# `uv sync` installs deps into .venv without trying to build the project.
-# Remove `package = false` once src/nhl_betting_model/ exists and we want
-# editable installs of the project itself.
-[tool.uv]
-package = false
+# Editable install of the `puckbunny` package from src/. Distribution name
+# is also `puckbunny` (renamed from the placeholder `nhl-betting-model`
+# in M2 PR-B to match the product name and the import path).
+[tool.hatch.build.targets.wheel]
+packages = ["src/puckbunny"]
 
 # ---------------------------------------------------------------------
 # Tooling config
@@ -88,9 +105,21 @@ warn_redundant_casts = true
 module = ["duckdb.*", "dagster.*", "dbt.*"]
 ignore_missing_imports = true
 
+# pyarrow's bundled type annotations are partial — ``pq.write_table`` /
+# ``pq.read_table`` are untyped, which trips ``disallow_untyped_calls``
+# in strict mode. We can't fix this by overriding pyarrow's checking
+# settings (overrides apply to checking *of* a module, not to calls
+# *into* it), so the two specific call sites carry per-line
+# ``# type: ignore[no-untyped-call]``. Revisit if pyarrow ships full
+# stubs or if we're willing to add ``pyarrow-stubs`` as a dev dep.
+
 [tool.pytest.ini_options]
 minversion = "8.0"
-addopts = "-ra --strict-markers --strict-config"
+# ``--import-mode=importlib`` keeps pytest from inserting test subdirs
+# (e.g. ``tests/http/``) onto ``sys.path`` during collection. Without
+# this, ``tests/http/__init__.py`` ends up shadowing the stdlib ``http``
+# package and breaks ``import http.client`` inside httpx / botocore.
+addopts = "-ra --strict-markers --strict-config --import-mode=importlib"
 testpaths = ["tests"]
 markers = [
   "slow: tests that are slow (deselect with '-m \"not slow\"')",
