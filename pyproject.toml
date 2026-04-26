@@ -91,6 +91,18 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["ARG"]   # pytest fixtures often show as unused args
 
+[tool.ruff.lint.flake8-type-checking]
+# Pydantic resolves annotations at model-class-creation time (it calls
+# ``typing.get_type_hints``), so types referenced from a ``BaseModel``
+# field must be importable at runtime — they cannot live under
+# ``TYPE_CHECKING``. Telling flake8-type-checking about the relevant
+# base classes prevents false positives that would push e.g. ``date``
+# or ``datetime`` into ``TYPE_CHECKING`` and break model construction.
+runtime-evaluated-base-classes = [
+  "pydantic.BaseModel",
+  "pydantic_settings.BaseSettings",
+]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
