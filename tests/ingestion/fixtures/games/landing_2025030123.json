@@ -1,0 +1,953 @@
+{
+  "id": 2025030123,
+  "season": 20252026,
+  "gameType": 3,
+  "limitedScoring": false,
+  "gameDate": "2026-04-24",
+  "venue": {
+    "default": "Centre Bell"
+  },
+  "venueLocation": {
+    "default": "Montreal",
+    "fr": "Montréal"
+  },
+  "startTimeUTC": "2026-04-24T23:00:00Z",
+  "easternUTCOffset": "-04:00",
+  "venueUTCOffset": "-04:00",
+  "venueTimezone": "America/Montreal",
+  "periodDescriptor": {
+    "number": 4,
+    "periodType": "OT",
+    "maxRegulationPeriods": 3
+  },
+  "tvBroadcasts": [
+    {
+      "id": 385,
+      "market": "N",
+      "countryCode": "US",
+      "network": "TNT",
+      "sequenceNumber": 11
+    },
+    {
+      "id": 501,
+      "market": "N",
+      "countryCode": "US",
+      "network": "truTV",
+      "sequenceNumber": 14
+    },
+    {
+      "id": 578,
+      "market": "N",
+      "countryCode": "US",
+      "network": "HBO MAX",
+      "sequenceNumber": 19
+    },
+    {
+      "id": 4,
+      "market": "N",
+      "countryCode": "CA",
+      "network": "CBC",
+      "sequenceNumber": 101
+    },
+    {
+      "id": 282,
+      "market": "N",
+      "countryCode": "CA",
+      "network": "SN",
+      "sequenceNumber": 107
+    },
+    {
+      "id": 281,
+      "market": "N",
+      "countryCode": "CA",
+      "network": "TVAS",
+      "sequenceNumber": 120
+    },
+    {
+      "id": 581,
+      "market": "A",
+      "countryCode": "US",
+      "network": "The Spot",
+      "sequenceNumber": 211
+    }
+  ],
+  "gameState": "OFF",
+  "gameScheduleState": "OK",
+  "awayTeam": {
+    "id": 14,
+    "commonName": {
+      "default": "Lightning"
+    },
+    "abbrev": "TBL",
+    "placeName": {
+      "default": "Tampa Bay"
+    },
+    "placeNameWithPreposition": {
+      "default": "Tampa Bay",
+      "fr": "de Tampa Bay"
+    },
+    "score": 2,
+    "sog": 17,
+    "logo": "https://assets.nhle.com/logos/nhl/svg/TBL_light.svg",
+    "darkLogo": "https://assets.nhle.com/logos/nhl/svg/TBL_dark.svg"
+  },
+  "homeTeam": {
+    "id": 8,
+    "commonName": {
+      "default": "Canadiens"
+    },
+    "abbrev": "MTL",
+    "placeName": {
+      "default": "Montréal"
+    },
+    "placeNameWithPreposition": {
+      "default": "Montréal",
+      "fr": "de Montréal"
+    },
+    "score": 3,
+    "sog": 29,
+    "logo": "https://assets.nhle.com/logos/nhl/svg/MTL_light.svg",
+    "darkLogo": "https://assets.nhle.com/logos/nhl/svg/MTL_dark.svg"
+  },
+  "shootoutInUse": false,
+  "regPeriods": 3,
+  "otInUse": true,
+  "tiesInUse": false,
+  "summary": {
+    "scoring": [
+      {
+        "periodDescriptor": {
+          "number": 1,
+          "periodType": "REG",
+          "maxRegulationPeriods": 3
+        },
+        "goals": [
+          {
+            "situationCode": "1551",
+            "eventId": 128,
+            "strength": "ev",
+            "playerId": 8480074,
+            "firstName": {
+              "default": "Alexandre"
+            },
+            "lastName": {
+              "default": "Texier"
+            },
+            "name": {
+              "default": "A. Texier"
+            },
+            "teamAbbrev": {
+              "default": "MTL"
+            },
+            "headshot": "https://assets.nhle.com/mugs/nhl/20252026/MTL/8480074.png",
+            "highlightClipSharingUrl": "https://nhl.com/video/tbl-mtl-texier-scores-goal-against-andrei-vasilevskiy-6393823710112",
+            "highlightClipSharingUrlFr": "https://nhl.com/fr/video/tbl-mtl-texier-marque-un-but-contre-andrei-vasilevskiy-6393826279112",
+            "highlightClip": 6393823710112,
+            "highlightClipFr": 6393826279112,
+            "discreteClip": 6393822455112,
+            "discreteClipFr": 6393827036112,
+            "goalsToDate": 1,
+            "awayScore": 0,
+            "homeScore": 1,
+            "leadingTeamAbbrev": {
+              "default": "MTL"
+            },
+            "timeInPeriod": "04:53",
+            "shotType": "snap",
+            "goalModifier": "none",
+            "assists": [
+              {
+                "playerId": 8482737,
+                "firstName": {
+                  "default": "Zachary"
+                },
+                "lastName": {
+                  "default": "Bolduc"
+                },
+                "name": {
+                  "default": "Z. Bolduc"
+                },
+                "assistsToDate": 1,
+                "sweaterNumber": 76
+              },
+              {
+                "playerId": 8481523,
+                "firstName": {
+                  "default": "Kirby"
+                },
+                "lastName": {
+                  "default": "Dach"
+                },
+                "name": {
+                  "default": "K. Dach"
+                },
+                "assistsToDate": 1,
+                "sweaterNumber": 77
+              }
+            ],
+            "pptReplayUrl": "https://wsr.nhle.com/sprites/20252026/2025030123/ev128.json",
+            "homeTeamDefendingSide": "right",
+            "isHome": true
+          },
+          {
+            "situationCode": "1541",
+            "eventId": 170,
+            "strength": "pp",
+            "playerId": 8478010,
+            "firstName": {
+              "default": "Brayden"
+            },
+            "lastName": {
+              "default": "Point"
+            },
+            "name": {
+              "default": "B. Point"
+            },
+            "teamAbbrev": {
+              "default": "TBL"
+            },
+            "headshot": "https://assets.nhle.com/mugs/nhl/20252026/TBL/8478010.png",
+            "highlightClipSharingUrl": "https://nhl.com/video/tbl-mtl-point-scores-ppg-against-jakub-dobes-6393823543112",
+            "highlightClipSharingUrlFr": "https://nhl.com/fr/video/tbl-mtl-point-marque-un-but-en-a-n-contre-jakub-dobes-6393823550112",
+            "highlightClip": 6393823543112,
+            "highlightClipFr": 6393823550112,
+            "discreteClip": 6393823648112,
+            "discreteClipFr": 6393824144112,
+            "goalsToDate": 1,
+            "awayScore": 1,
+            "homeScore": 1,
+            "timeInPeriod": "07:42",
+            "shotType": "snap",
+            "goalModifier": "none",
+            "assists": [
+              {
+                "playerId": 8477404,
+                "firstName": {
+                  "default": "Jake"
+                },
+                "lastName": {
+                  "default": "Guentzel"
+                },
+                "name": {
+                  "default": "J. Guentzel"
+                },
+                "assistsToDate": 5,
+                "sweaterNumber": 59
+              },
+              {
+                "playerId": 8476453,
+                "firstName": {
+                  "default": "Nikita"
+                },
+                "lastName": {
+                  "default": "Kucherov",
+                  "cs": "Kučerov",
+                  "fi": "Kutsherov",
+                  "sk": "Kučerov"
+                },
+                "name": {
+                  "default": "N. Kucherov",
+                  "cs": "N. Kučerov",
+                  "fi": "N. Kutsherov",
+                  "sk": "N. Kučerov"
+                },
+                "assistsToDate": 3,
+                "sweaterNumber": 86
+              }
+            ],
+            "pptReplayUrl": "https://wsr.nhle.com/sprites/20252026/2025030123/ev170.json",
+            "homeTeamDefendingSide": "right",
+            "isHome": false
+          }
+        ]
+      },
+      {
+        "periodDescriptor": {
+          "number": 2,
+          "periodType": "REG",
+          "maxRegulationPeriods": 3
+        },
+        "goals": [
+          {
+            "situationCode": "1551",
+            "eventId": 557,
+            "strength": "ev",
+            "playerId": 8479542,
+            "firstName": {
+              "default": "Brandon"
+            },
+            "lastName": {
+              "default": "Hagel"
+            },
+            "name": {
+              "default": "B. Hagel"
+            },
+            "teamAbbrev": {
+              "default": "TBL"
+            },
+            "headshot": "https://assets.nhle.com/mugs/nhl/20252026/TBL/8479542.png",
+            "highlightClipSharingUrl": "https://nhl.com/video/tbl-mtl-hagel-scores-goal-against-jakub-dobes-6393826476112",
+            "highlightClipSharingUrlFr": "https://nhl.com/fr/video/tbl-mtl-hagel-marque-un-but-contre-jakub-dobes-6393827749112",
+            "highlightClip": 6393826476112,
+            "highlightClipFr": 6393827749112,
+            "discreteClip": 6393826293112,
+            "discreteClipFr": 6393826190112,
+            "goalsToDate": 4,
+            "awayScore": 2,
+            "homeScore": 1,
+            "leadingTeamAbbrev": {
+              "default": "TBL"
+            },
+            "timeInPeriod": "04:47",
+            "shotType": "snap",
+            "goalModifier": "none",
+            "assists": [],
+            "pptReplayUrl": "https://wsr.nhle.com/sprites/20252026/2025030123/ev557.json",
+            "homeTeamDefendingSide": "left",
+            "isHome": false
+          },
+          {
+            "situationCode": "1551",
+            "eventId": 207,
+            "strength": "ev",
+            "playerId": 8481523,
+            "firstName": {
+              "default": "Kirby"
+            },
+            "lastName": {
+              "default": "Dach"
+            },
+            "name": {
+              "default": "K. Dach"
+            },
+            "teamAbbrev": {
+              "default": "MTL"
+            },
+            "headshot": "https://assets.nhle.com/mugs/nhl/20252026/MTL/8481523.png",
+            "highlightClipSharingUrl": "https://nhl.com/video/tbl-mtl-dach-scores-goal-against-andrei-vasilevskiy-6393826410112",
+            "highlightClipSharingUrlFr": "https://nhl.com/fr/video/tbl-mtl-dach-marque-un-but-contre-andrei-vasilevskiy-6393827105112",
+            "highlightClip": 6393826410112,
+            "highlightClipFr": 6393827105112,
+            "discreteClip": 6393827193112,
+            "discreteClipFr": 6393828556112,
+            "goalsToDate": 1,
+            "awayScore": 2,
+            "homeScore": 2,
+            "timeInPeriod": "12:43",
+            "shotType": "snap",
+            "goalModifier": "none",
+            "assists": [
+              {
+                "playerId": 8482964,
+                "firstName": {
+                  "default": "Arber"
+                },
+                "lastName": {
+                  "default": "Xhekaj"
+                },
+                "name": {
+                  "default": "A. Xhekaj"
+                },
+                "assistsToDate": 1,
+                "sweaterNumber": 72
+              }
+            ],
+            "pptReplayUrl": "https://wsr.nhle.com/sprites/20252026/2025030123/ev207.json",
+            "homeTeamDefendingSide": "left",
+            "isHome": true
+          }
+        ]
+      },
+      {
+        "periodDescriptor": {
+          "number": 3,
+          "periodType": "REG",
+          "maxRegulationPeriods": 3
+        },
+        "goals": []
+      },
+      {
+        "periodDescriptor": {
+          "number": 4,
+          "periodType": "OT",
+          "maxRegulationPeriods": 3
+        },
+        "goals": [
+          {
+            "situationCode": "1551",
+            "eventId": 1159,
+            "strength": "ev",
+            "playerId": 8483457,
+            "firstName": {
+              "default": "Lane"
+            },
+            "lastName": {
+              "default": "Hutson"
+            },
+            "name": {
+              "default": "L. Hutson"
+            },
+            "teamAbbrev": {
+              "default": "MTL"
+            },
+            "headshot": "https://assets.nhle.com/mugs/nhl/20252026/MTL/8483457.png",
+            "highlightClipSharingUrl": "https://nhl.com/video/tbl-mtl-hutson-scores-goal-against-andrei-vasilevskiy-6393836954112",
+            "highlightClipSharingUrlFr": "https://nhl.com/fr/video/tbl-mtl-hutson-marque-un-but-contre-andrei-vasilevskiy-6393836562112",
+            "highlightClip": 6393836954112,
+            "highlightClipFr": 6393836562112,
+            "discreteClip": 6393836653112,
+            "discreteClipFr": 6393836451112,
+            "goalsToDate": 2,
+            "awayScore": 2,
+            "homeScore": 3,
+            "leadingTeamAbbrev": {
+              "default": "MTL"
+            },
+            "timeInPeriod": "02:09",
+            "shotType": "slap",
+            "goalModifier": "none",
+            "assists": [
+              {
+                "playerId": 8480074,
+                "firstName": {
+                  "default": "Alexandre"
+                },
+                "lastName": {
+                  "default": "Texier"
+                },
+                "name": {
+                  "default": "A. Texier"
+                },
+                "assistsToDate": 1,
+                "sweaterNumber": 85
+              },
+              {
+                "playerId": 8482737,
+                "firstName": {
+                  "default": "Zachary"
+                },
+                "lastName": {
+                  "default": "Bolduc"
+                },
+                "name": {
+                  "default": "Z. Bolduc"
+                },
+                "assistsToDate": 2,
+                "sweaterNumber": 76
+              }
+            ],
+            "pptReplayUrl": "https://wsr.nhle.com/sprites/20252026/2025030123/ev1159.json",
+            "homeTeamDefendingSide": "left",
+            "isHome": true
+          }
+        ]
+      }
+    ],
+    "threeStars": [
+      {
+        "star": 1,
+        "playerId": 8483457,
+        "teamAbbrev": "MTL",
+        "headshot": "https://assets.nhle.com/mugs/nhl/20252026/MTL/8483457.png",
+        "name": {
+          "default": "L. Hutson"
+        },
+        "sweaterNo": 48,
+        "position": "D",
+        "goals": 1,
+        "assists": 0,
+        "points": 1
+      },
+      {
+        "star": 2,
+        "playerId": 8481523,
+        "teamAbbrev": "MTL",
+        "headshot": "https://assets.nhle.com/mugs/nhl/20252026/MTL/8481523.png",
+        "name": {
+          "default": "K. Dach"
+        },
+        "sweaterNo": 77,
+        "position": "C",
+        "goals": 1,
+        "assists": 1,
+        "points": 2
+      },
+      {
+        "star": 3,
+        "playerId": 8479542,
+        "teamAbbrev": "TBL",
+        "headshot": "https://assets.nhle.com/mugs/nhl/20252026/TBL/8479542.png",
+        "name": {
+          "default": "B. Hagel"
+        },
+        "sweaterNo": 38,
+        "position": "L",
+        "goals": 1,
+        "assists": 0,
+        "points": 1
+      }
+    ],
+    "penalties": [
+      {
+        "periodDescriptor": {
+          "number": 1,
+          "periodType": "REG",
+          "maxRegulationPeriods": 3
+        },
+        "penalties": [
+          {
+            "timeInPeriod": "06:06",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Jakub"
+              },
+              "lastName": {
+                "default": "Dobes"
+              },
+              "sweaterNumber": 75
+            },
+            "teamAbbrev": {
+              "default": "MTL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Yanni"
+              },
+              "lastName": {
+                "default": "Gourde"
+              },
+              "sweaterNumber": 37
+            },
+            "descKey": "tripping",
+            "servedBy": {
+              "default": "Ivan Demidov"
+            }
+          },
+          {
+            "timeInPeriod": "08:12",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Kirby"
+              },
+              "lastName": {
+                "default": "Dach"
+              },
+              "sweaterNumber": 77
+            },
+            "teamAbbrev": {
+              "default": "MTL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Dominic"
+              },
+              "lastName": {
+                "default": "James"
+              },
+              "sweaterNumber": 17
+            },
+            "descKey": "tripping"
+          },
+          {
+            "timeInPeriod": "12:23",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Nikita"
+              },
+              "lastName": {
+                "default": "Kucherov",
+                "cs": "Kučerov",
+                "fi": "Kutsherov",
+                "sk": "Kučerov"
+              },
+              "sweaterNumber": 86
+            },
+            "teamAbbrev": {
+              "default": "TBL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Alexandre"
+              },
+              "lastName": {
+                "default": "Carrier"
+              },
+              "sweaterNumber": 45
+            },
+            "descKey": "tripping"
+          },
+          {
+            "timeInPeriod": "19:11",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Mike"
+              },
+              "lastName": {
+                "default": "Matheson"
+              },
+              "sweaterNumber": 8
+            },
+            "teamAbbrev": {
+              "default": "MTL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Brandon"
+              },
+              "lastName": {
+                "default": "Hagel"
+              },
+              "sweaterNumber": 38
+            },
+            "descKey": "hooking"
+          }
+        ]
+      },
+      {
+        "periodDescriptor": {
+          "number": 2,
+          "periodType": "REG",
+          "maxRegulationPeriods": 3
+        },
+        "penalties": [
+          {
+            "timeInPeriod": "04:47",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Jakub"
+              },
+              "lastName": {
+                "default": "Dobes"
+              },
+              "sweaterNumber": 75
+            },
+            "teamAbbrev": {
+              "default": "MTL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Nikita"
+              },
+              "lastName": {
+                "default": "Kucherov",
+                "cs": "Kučerov",
+                "fi": "Kutsherov",
+                "sk": "Kučerov"
+              },
+              "sweaterNumber": 86
+            },
+            "descKey": "unsportsmanlike-conduct",
+            "servedBy": {
+              "default": "J. Evans"
+            }
+          },
+          {
+            "timeInPeriod": "04:47",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Erik"
+              },
+              "lastName": {
+                "default": "Cernak",
+                "cs": "Černák",
+                "sk": "Černák"
+              },
+              "sweaterNumber": 81
+            },
+            "teamAbbrev": {
+              "default": "TBL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Jakub"
+              },
+              "lastName": {
+                "default": "Dobes"
+              },
+              "sweaterNumber": 75
+            },
+            "descKey": "unsportsmanlike-conduct"
+          },
+          {
+            "timeInPeriod": "09:59",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Ivan"
+              },
+              "lastName": {
+                "default": "Demidov"
+              },
+              "sweaterNumber": 93
+            },
+            "teamAbbrev": {
+              "default": "MTL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Ryan"
+              },
+              "lastName": {
+                "default": "McDonagh"
+              },
+              "sweaterNumber": 27
+            },
+            "descKey": "high-sticking"
+          },
+          {
+            "timeInPeriod": "14:05",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Brandon"
+              },
+              "lastName": {
+                "default": "Hagel"
+              },
+              "sweaterNumber": 38
+            },
+            "teamAbbrev": {
+              "default": "TBL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Cole"
+              },
+              "lastName": {
+                "default": "Caufield"
+              },
+              "sweaterNumber": 13
+            },
+            "descKey": "holding-the-stick"
+          },
+          {
+            "timeInPeriod": "16:14",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Emil"
+              },
+              "lastName": {
+                "default": "Lilleberg"
+              },
+              "sweaterNumber": 78
+            },
+            "teamAbbrev": {
+              "default": "TBL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Alex"
+              },
+              "lastName": {
+                "default": "Newhook"
+              },
+              "sweaterNumber": 15
+            },
+            "descKey": "hooking"
+          },
+          {
+            "timeInPeriod": "19:29",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Darren"
+              },
+              "lastName": {
+                "default": "Raddysh"
+              },
+              "sweaterNumber": 43
+            },
+            "teamAbbrev": {
+              "default": "TBL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Jake"
+              },
+              "lastName": {
+                "default": "Evans"
+              },
+              "sweaterNumber": 71
+            },
+            "descKey": "high-sticking"
+          }
+        ]
+      },
+      {
+        "periodDescriptor": {
+          "number": 3,
+          "periodType": "REG",
+          "maxRegulationPeriods": 3
+        },
+        "penalties": [
+          {
+            "timeInPeriod": "08:50",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Josh"
+              },
+              "lastName": {
+                "default": "Anderson"
+              },
+              "sweaterNumber": 17
+            },
+            "teamAbbrev": {
+              "default": "MTL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Declan"
+              },
+              "lastName": {
+                "default": "Carlile"
+              },
+              "sweaterNumber": 67
+            },
+            "descKey": "high-sticking"
+          },
+          {
+            "timeInPeriod": "16:02",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Emil"
+              },
+              "lastName": {
+                "default": "Lilleberg"
+              },
+              "sweaterNumber": 78
+            },
+            "teamAbbrev": {
+              "default": "TBL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Arber"
+              },
+              "lastName": {
+                "default": "Xhekaj"
+              },
+              "sweaterNumber": 72
+            },
+            "descKey": "roughing"
+          },
+          {
+            "timeInPeriod": "16:02",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Zemgus"
+              },
+              "lastName": {
+                "default": "Girgensons"
+              },
+              "sweaterNumber": 28
+            },
+            "teamAbbrev": {
+              "default": "TBL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Phillip"
+              },
+              "lastName": {
+                "default": "Danault"
+              },
+              "sweaterNumber": 24
+            },
+            "descKey": "roughing"
+          },
+          {
+            "timeInPeriod": "16:02",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Phillip"
+              },
+              "lastName": {
+                "default": "Danault"
+              },
+              "sweaterNumber": 24
+            },
+            "teamAbbrev": {
+              "default": "MTL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Zemgus"
+              },
+              "lastName": {
+                "default": "Girgensons"
+              },
+              "sweaterNumber": 28
+            },
+            "descKey": "roughing"
+          },
+          {
+            "timeInPeriod": "16:02",
+            "type": "MIN",
+            "duration": 2,
+            "committedByPlayer": {
+              "firstName": {
+                "default": "Arber"
+              },
+              "lastName": {
+                "default": "Xhekaj"
+              },
+              "sweaterNumber": 72
+            },
+            "teamAbbrev": {
+              "default": "MTL"
+            },
+            "drawnBy": {
+              "firstName": {
+                "default": "Emil"
+              },
+              "lastName": {
+                "default": "Lilleberg"
+              },
+              "sweaterNumber": 78
+            },
+            "descKey": "roughing"
+          }
+        ]
+      },
+      {
+        "periodDescriptor": {
+          "number": 4,
+          "periodType": "OT",
+          "maxRegulationPeriods": 3
+        },
+        "penalties": []
+      }
+    ]
+  },
+  "clock": {
+    "timeRemaining": "17:51",
+    "secondsRemaining": 1071,
+    "running": false,
+    "inIntermission": false
+  }
+}
