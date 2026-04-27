@@ -18,6 +18,7 @@ from pydantic import ValidationError
 from puckbunny.ingestion.nhl.schemas import (
     BoxscoreResponse,
     LandingResponse,
+    PlayByPlayResponse,
     TeamRef,
     assert_game_id_matches_season,
 )
@@ -25,6 +26,7 @@ from puckbunny.ingestion.nhl.schemas import (
 _FIXTURES_DIR: Path = Path(__file__).parent / "fixtures" / "games"
 _LANDING_FIXTURE: Path = _FIXTURES_DIR / "landing_2025030123.json"
 _BOXSCORE_FIXTURE: Path = _FIXTURES_DIR / "boxscore_2025030123.json"
+_PBP_FIXTURE: Path = _FIXTURES_DIR / "play_by_play_2025030123.json"
 
 
 def _load_landing() -> dict[str, Any]:
@@ -34,6 +36,11 @@ def _load_landing() -> dict[str, Any]:
 
 def _load_boxscore() -> dict[str, Any]:
     data: dict[str, Any] = json.loads(_BOXSCORE_FIXTURE.read_text(encoding="utf-8"))
+    return data
+
+
+def _load_pbp() -> dict[str, Any]:
+    data: dict[str, Any] = json.loads(_PBP_FIXTURE.read_text(encoding="utf-8"))
     return data
 
 
@@ -113,6 +120,27 @@ def test_boxscore_requires_game_outcome() -> None:
     with pytest.raises(ValidationError) as exc_info:
         BoxscoreResponse.model_validate(payload)
     assert "gameOutcome" in str(exc_info.value)
+
+
+# --------------------------------------------------------------------
+# PlayByPlayResponse
+# --------------------------------------------------------------------
+
+
+def test_pbp_parses_real_fixture() -> None:
+    payload = _load_pbp()
+    parsed = PlayByPlayResponse.model_validate(payload)
+    assert parsed.id == 2025030123
+    # Spike key-scan numbers — 319 plays, 40 rosterSpots.
+    assert len(parsed.plays) == 319
+    assert len(parsed.rosterSpots) == 40
+
+
+def test_pbp_rejects_game_id_season_mismatch() -> None:
+    payload = _load_pbp()
+    payload["season"] = 20242025
+    with pytest.raises(ValidationError, match="game-id format violation"):
+        PlayByPlayResponse.model_validate(payload)
 
 
 # --------------------------------------------------------------------

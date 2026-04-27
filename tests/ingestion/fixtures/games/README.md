@@ -9,6 +9,7 @@ Verbatim JSON payloads recorded during the PR-A spike against the live
 |------|----------|------|
 | `landing_2025030123.json` | `/v1/gamecenter/2025030123/landing` | TBL @ MTL, 2026-04-24, playoffs (gameType=3) |
 | `boxscore_2025030123.json` | `/v1/gamecenter/2025030123/boxscore` | (same game) |
+| `play_by_play_2025030123.json` | `/v1/gamecenter/2025030123/play-by-play` | (same game) — 319 plays, 40 rosterSpots; key scan in `docs/ideas/prd-pbp-keys.md` |
 
 Refresh policy: only re-record if a parser change requires shape we
 don't currently exercise, or if NHL changes the schema and our pydantic
