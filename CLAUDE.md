@@ -125,6 +125,24 @@ Rules:
 - Never round-trip a file through the Linux side to "preserve" or "back up" its state. If a backup is needed, copy it via a Windows-side tool.
 - If a file appears different between the two views, trust the Windows side.
 
+### Recovery procedure when bash gets a stale view
+
+A file that Windows already has correctly (verified via Read) may still appear truncated, NUL-padded, or BOM-prefixed when read from bash. Symptoms: `cat` returns fewer bytes than `stat -c %s`; ruff / mypy / uv parse errors that don't reproduce on Windows; `git status` reports a wrong tree because `.git/config` reads as a fragment.
+
+Workaround that has worked: from the Linux side, rename the file to a sibling and back —
+
+```bash
+mv path/to/file path/to/file.tmp && mv path/to/file.tmp path/to/file
+```
+
+This forces the FUSE bind mount to reissue inode metadata and usually causes the Linux view to converge on the Windows-side bytes. Verify after by re-reading and comparing length to the Windows-side `Read` tool.
+
+This is a recovery move, not a substitute for the rules above. Specifically:
+
+- Only use it on files where the Windows side is known to be correct. The mv goes through the Linux side, so if Linux already has a corrupted view it can write that view back to Windows — same hazard as the original truncation. Read the Windows-side file first to confirm authority.
+- Never run it on `.git/config`, `.git/index`, or anything else inside `.git/`. We've seen this combination create a Linux-only "ghost" view of `.git/config` (e.g., 512 bytes with a UTF-8 BOM) that no further mv can dislodge, and a `.git/index.lock` that the FUSE mount won't let bash delete (`Operation not permitted`). When bash-side git is broken, hand off to the Windows shell — don't try to fix `.git` from Linux.
+- Don't use it to "rescue" a file you just wrote from bash. That's the round-trip the rules above forbid.
+
 ---
 
 ## Dev Container guidance (Claude)
