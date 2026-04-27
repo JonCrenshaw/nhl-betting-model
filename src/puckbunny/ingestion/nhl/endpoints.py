@@ -10,7 +10,8 @@ envelope's ``endpoint`` column, where the *template* — not a
 substituted URL — is the canonical identifier of which API surface
 produced a row. Concrete URLs come from the matching ``*_url`` helper.
 
-PR-D will add a ``play_by_play_url`` here; PR-E adds ``schedule_url``.
+PR-E adds ``schedule_url``; PR-F adds the season-summaries surface on
+``api.nhle.com/stats/rest/v1``.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ NHL_API_BASE_URL: str = "https://api-web.nhle.com"
 #: ``gameId`` term so cross-referencing their docs is friction-free.
 LANDING_ENDPOINT_TEMPLATE: str = "/v1/gamecenter/{gameId}/landing"
 BOXSCORE_ENDPOINT_TEMPLATE: str = "/v1/gamecenter/{gameId}/boxscore"
+PLAY_BY_PLAY_ENDPOINT_TEMPLATE: str = "/v1/gamecenter/{gameId}/play-by-play"
 
 
 def landing_url(game_id: int) -> str:
@@ -33,3 +35,14 @@ def landing_url(game_id: int) -> str:
 def boxscore_url(game_id: int) -> str:
     """Return the absolute ``boxscore`` URL for ``game_id``."""
     return f"{NHL_API_BASE_URL}/v1/gamecenter/{game_id}/boxscore"
+
+
+def play_by_play_url(game_id: int) -> str:
+    """Return the absolute ``play-by-play`` URL for ``game_id``.
+
+    PxP is the largest per-game payload (~131 KB JSON / ~16 KB Parquet,
+    per the PR-A spike). Same URL shape as the other two game-level
+    endpoints; carries ``plays`` and ``rosterSpots`` lists in addition
+    to the shared game metadata.
+    """
+    return f"{NHL_API_BASE_URL}/v1/gamecenter/{game_id}/play-by-play"
