@@ -19,7 +19,7 @@ Draft. Dates are indicative only, based on ~10 hrs/week solo time starting April
 ### Current status
 
 - **M1 — complete** (April 2026). Repo, devcontainer (ADR-0002), `uv`, dbt scaffold, pre-commit hooks, and CI all landed on `main`. One deferred item parked in `docs/ideas/gitleaks-local-hook.md`.
-- **M2 — in progress.** Plan at `docs/milestones/m2-nhl-ingestion.md`. PR-A (spike), PR-B (HTTP + storage primitives), and PR-C (NHL games endpoint — landing + boxscore) merged on `main`. Package layout established at `src/puckbunny/{config,logging_setup,http,storage,ingestion}/…` with the NHL ingestion CLI live as `uv run python -m puckbunny.ingestion.nhl games --game-id <id>`. R2 bucket `puckbunny-lake` provisioned and credentialed. Timeline extended from 2–3 weeks to 4 weeks so season-scoped loaders stay in scope. Next action: PR-D (play-by-play loader).
+- **M2 — in progress.** Plan at `docs/milestones/m2-nhl-ingestion.md`. PR-A (spike), PR-B (HTTP + storage primitives), PR-C (NHL games endpoint — landing + boxscore), and PR-D (play-by-play) merged on `main`. Package layout established at `src/puckbunny/{config,logging_setup,http,storage,ingestion}/…` with the NHL ingestion CLI live as `uv run python -m puckbunny.ingestion.nhl {games,play-by-play} --game-id <id>`. R2 bucket `puckbunny-lake` provisioned and credentialed. Timeline extended from 2–3 weeks to 4 weeks so season-scoped loaders stay in scope. Next action: PR-E (schedule + daily incremental).
 
 ### Milestones
 

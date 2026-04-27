@@ -38,6 +38,7 @@ __all__ = [
     "BoxscoreResponse",
     "GameResponseBase",
     "LandingResponse",
+    "PlayByPlayResponse",
     "TeamRef",
     "assert_game_id_matches_season",
 ]
@@ -129,6 +130,30 @@ class BoxscoreResponse(GameResponseBase):
 
     playerByGameStats: dict[str, Any]
     gameOutcome: dict[str, Any]
+
+
+class PlayByPlayResponse(GameResponseBase):
+    """``/v1/gamecenter/{gameId}/play-by-play`` typed shape.
+
+    The fields that justify hitting this endpoint at all — ``plays``
+    (event-level play-by-play) and ``rosterSpots`` (per-game dressed
+    roster) — are pinned as required, so a regression that drops them
+    fails at parse time rather than landing a useless payload in
+    bronze.
+
+    Per ``docs/ideas/prd-pbp-keys.md``, per-event ``details`` shapes
+    vary by ``typeDescKey`` and a few event types (``period-start``,
+    ``period-end``, ``game-end``) have no ``details`` block at all. We
+    deliberately do **not** model ``plays[*].details`` here. The bronze
+    contract is "preserve the verbatim payload"; silver (M3) handles
+    the per-event-type unnest where it can fail loudly without
+    breaking ingest. ``extra="allow"`` (inherited from
+    :class:`GameResponseBase`) means future ``typeDescKey`` values land
+    quietly in bronze.
+    """
+
+    plays: list[dict[str, Any]]
+    rosterSpots: list[dict[str, Any]]
 
 
 def assert_game_id_matches_season(game_id: int, season: int | str) -> None:

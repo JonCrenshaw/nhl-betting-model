@@ -1,16 +1,17 @@
 """``python -m puckbunny.ingestion.nhl ...`` command-line entry point.
 
-PR-C ships one subcommand: ``games --game-id <id>``. PR-D adds
-``play-by-play``; PR-E adds ``daily``; PR-G adds ``backfill``. The
-shell uses ``argparse`` rather than a third-party CLI framework — the
-surface is small, the dep cost is zero, and the behavior is
-predictable across shells.
+PR-C shipped ``games --game-id <id>``. PR-D adds
+``play-by-play --game-id <id>``. PR-E adds ``daily``; PR-G adds
+``backfill``. The shell uses ``argparse`` rather than a third-party
+CLI framework — the surface is small, the dep cost is zero, and the
+behavior is predictable across shells.
 
 The CLI is intentionally thin: parse args, build the wired-up
 collaborators (settings → R2 storage → rate-limited client →
 loader), invoke the loader, print a one-line summary on success.
 Tests exercise :func:`main` directly with ``argv`` and a stub
-loader factory; see ``tests/ingestion/test_nhl_games.py``.
+loader factory; see ``tests/ingestion/test_nhl_games.py`` and
+``tests/ingestion/test_nhl_pbp.py``.
 """
 
 from __future__ import annotations
@@ -24,6 +25,10 @@ from typing import TYPE_CHECKING
 from puckbunny.config import get_settings
 from puckbunny.http.client import RateLimitedClient
 from puckbunny.ingestion.nhl.games import GameLoader, GameLoadResult
+from puckbunny.ingestion.nhl.play_by_play import (
+    PlayByPlayLoader,
+    PlayByPlayLoadResult,
+)
 from puckbunny.logging_setup import configure_logging
 from puckbunny.storage.r2 import R2ObjectStorage
 
@@ -47,19 +52,26 @@ def main(
     *,
     loader_factory: Callable[[argparse.Namespace], tuple[GameLoader, Callable[[], None]]]
     | None = None,
+    pbp_loader_factory: Callable[[argparse.Namespace], tuple[PlayByPlayLoader, Callable[[], None]]]
+    | None = None,
 ) -> int:
     """CLI entry point. Returns a process exit code.
 
-    ``loader_factory`` is the test seam: production callers leave it
-    unset (the default builds an R2-backed loader from
-    :mod:`puckbunny.config`); tests inject a factory that wires the
-    loader to a local-filesystem storage + a mock HTTP transport.
+    ``loader_factory`` and ``pbp_loader_factory`` are the test seams:
+    production callers leave both unset (the defaults build R2-backed
+    loaders from :mod:`puckbunny.config`); tests inject factories that
+    wire the loader to a local-filesystem storage + a mock HTTP
+    transport. The two seams are kept separate because the loaders
+    produce different result shapes; collapsing them into one would
+    add stringly-typed branching for no real win.
     """
     parser = _build_parser()
     args = parser.parse_args(argv)
 
     if args.command == "games":
         return _cmd_games(args, loader_factory=loader_factory)
+    if args.command == "play-by-play":
+        return _cmd_play_by_play(args, pbp_loader_factory=pbp_loader_factory)
 
     # argparse should already have errored on an unknown command via
     # ``required=True`` on the subparsers; this is defense in depth.
@@ -91,6 +103,28 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Override the bronze partition date (YYYY-MM-DD). Defaults to today's UTC date.",
     )
     games.add_argument(
+        "--log-level",
+        default="INFO",
+        help="Logging threshold (DEBUG/INFO/WARNING/ERROR). Default INFO.",
+    )
+
+    pbp = sub.add_parser(
+        "play-by-play",
+        help="Fetch play-by-play for one game id and write to bronze.",
+    )
+    pbp.add_argument(
+        "--game-id",
+        type=int,
+        required=True,
+        help="Canonical NHL game ID, e.g. 2025030123.",
+    )
+    pbp.add_argument(
+        "--ingest-date",
+        type=date.fromisoformat,
+        default=None,
+        help="Override the bronze partition date (YYYY-MM-DD). Defaults to today's UTC date.",
+    )
+    pbp.add_argument(
         "--log-level",
         default="INFO",
         help="Logging threshold (DEBUG/INFO/WARNING/ERROR). Default INFO.",
@@ -131,6 +165,39 @@ def _default_loader_factory(
     return loader, client.close
 
 
+def _cmd_play_by_play(
+    args: argparse.Namespace,
+    *,
+    pbp_loader_factory: Callable[[argparse.Namespace], tuple[PlayByPlayLoader, Callable[[], None]]]
+    | None,
+) -> int:
+    configure_logging(level=args.log_level)
+    factory = pbp_loader_factory or _default_pbp_loader_factory
+    loader, close = factory(args)
+    try:
+        result = loader.load_one(args.game_id, ingest_date=args.ingest_date)
+    finally:
+        close()
+    _print_pbp_result(result)
+    return 0
+
+
+def _default_pbp_loader_factory(
+    _args: argparse.Namespace,
+) -> tuple[PlayByPlayLoader, Callable[[], None]]:
+    """Wire production collaborators from environment-driven settings."""
+    settings = get_settings()
+    storage: ObjectStorage = R2ObjectStorage.from_settings(settings)
+    client = RateLimitedClient(
+        rate_per_sec=settings.ingest_rate_limit_per_sec,
+        user_agent=settings.ingest_user_agent,
+        request_timeout_seconds=settings.ingest_request_timeout_seconds,
+        max_retries=settings.ingest_max_retries,
+    )
+    loader = PlayByPlayLoader(client, storage)
+    return loader, client.close
+
+
 def _print_result(result: GameLoadResult) -> None:
     """Emit a single-line JSON summary to stdout for shell composition."""
     summary = {
@@ -144,6 +211,20 @@ def _print_result(result: GameLoadResult) -> None:
             "key": result.boxscore.key,
             "rows": result.boxscore.rows,
             "bytes": result.boxscore.bytes,
+        },
+    }
+    sys.stdout.write(json.dumps(summary) + "\n")
+    sys.stdout.flush()
+
+
+def _print_pbp_result(result: PlayByPlayLoadResult) -> None:
+    """Emit a single-line JSON summary for the play-by-play subcommand."""
+    summary = {
+        "game_id": result.game_id,
+        "play_by_play": {
+            "key": result.play_by_play.key,
+            "rows": result.play_by_play.rows,
+            "bytes": result.play_by_play.bytes,
         },
     }
     sys.stdout.write(json.dumps(summary) + "\n")
