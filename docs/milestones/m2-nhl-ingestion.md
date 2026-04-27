@@ -1,6 +1,6 @@
 # M2 — NHL API Ingestion
 
-**Status.** Active. PR-A through PR-C merged on `main`; PR-D (play-by-play) next.
+**Status.** Active. PR-A through PR-D merged on `main`; PR-E (schedule + daily incremental) next.
 **Roadmap line.** `M2 | NHL API ingestion | 4 weeks` (revised from 2–3 at kickoff).
 **Prerequisites met.** M1 complete on `main` (devcontainer, uv, dbt scaffold, CI).
 
@@ -176,8 +176,8 @@ Fetched one recent game's landing + boxscore + play-by-play against live API, wr
 **PR-C — NHL games endpoint (landing + boxscore)** ✅ *complete (April 2026, branch `feat/m2-pr-c-games`)*
 `ingestion/nhl/games.py`, `schemas.py`, and the typed-envelope Parquet writer. Pydantic models *per endpoint* (separate `LandingResponse` / `BoxscoreResponse` shapes — the three game-level endpoints overlap heavily but each has unique top-level fields, per spike notes §2). Cassette tests via committed JSON fixtures + ``httpx.MockTransport`` (functionally equivalent to the plan's pytest-recording recipe; see test module docstring). CLI: `uv run python -m puckbunny.ingestion.nhl games --game-id <id>`.
 
-**PR-D — Play-by-play loader** (~1.5 days) — *next*
-`ingestion/nhl/play_by_play.py` built on PR-C primitives. PxP is the largest payload per game; validates the bronze layout works for volume. **First task before locking the parser:** scan `plays[*].details` for the union of keys per `typeDescKey` against the spike's saved Parquet (or a fresh sample) to confirm coordinate/player-id presence on shooting events and faceoffs (per spike notes §5). Drop scan output into [`docs/ideas/prd-pbp-keys.md`](../ideas/prd-pbp-keys.md) so PR-H can absorb it into ADR-0003 alongside the PR-A notes.
+**PR-D — Play-by-play loader** ✅ *complete (April 2026, branch `feat/m2-pr-d-pbp`)*
+`ingestion/nhl/play_by_play.py` built on PR-C primitives. PxP is the largest payload per game; validates the bronze layout works for volume. Pre-parser key scan landed in [`docs/ideas/prd-pbp-keys.md`](../ideas/prd-pbp-keys.md): coord/player-id presence confirmed on shooting events and faceoffs; three structural event types (`period-start`, `period-end`, `game-end`) carry no `details` block — silver (M3) treats those as known exceptions, bronze stays tolerant via `extra="allow"` on `PlayByPlayResponse`. CLI: `uv run python -m puckbunny.ingestion.nhl play-by-play --game-id <id>`. Bronze partition `bronze/nhl_api/play-by-play/ingest_date=YYYY-MM-DD/`. Cassette tests via the same committed-JSON-fixture + `httpx.MockTransport` pattern PR-C established.
 
 **PR-E — Schedule + daily incremental** (~2 days)
 `ingestion/nhl/schedule.py`. CLI: `uv run python -m puckbunny.ingestion.nhl daily [--date YYYY-MM-DD]` (defaults to yesterday in America/Toronto). The schedule endpoint returns a week of games keyed by `gameWeek[*].date`, so the daily walker iterates `gameWeek[*]` filtered to the requested date (per spike notes §1 and open questions). Fetches only games whose `gameState` ∈ `{FINAL, OFF}` and not yet in the manifest. End-to-end smoke test covers the full flow.
