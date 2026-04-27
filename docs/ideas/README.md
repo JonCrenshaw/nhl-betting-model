@@ -19,3 +19,4 @@ Parking lot for thoughts not scoped into current work. Better to capture a half-
 - [prop-market-expansion.md](./prop-market-expansion.md) — Additional bet types to consider later
 - [transparency-page.md](./transparency-page.md) — Public CLV tracker as marketing moat
 - [other-sports-expansion.md](./other-sports-expansion.md) — Multi-sport expansion notes
+- [prd-pbp-keys.md](./prd-pbp-keys.md) — PR-D play-by-play key scan output (placeholder; populated in PR-D, absorbed into ADR-0003 in PR-H)
