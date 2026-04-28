@@ -77,6 +77,7 @@ At the start of any substantive session, Claude should:
 ### Commit messages
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`).
 - Reference ADR numbers where relevant, e.g. `feat(warehouse): adopt DuckDB (ADR-0001)`.
+- **Claude should proactively recommend a branch name and a commit message body whenever a session reaches a commit-worthy stopping point** — a milestone PR with passing tests, a logical chunk of refactor that stands on its own, a finished documentation pass, etc. Don't wait to be asked. Branch naming for milestone PRs follows `feat/m<N>-pr-<letter>-<short-slug>` (e.g. `feat/m2-pr-e-schedule`); other branches use the conventional-commit type as the prefix (`fix/...`, `docs/...`, `refactor/...`). The commit body should summarize *what* landed and *why* — long bodies are fine when the change has tradeoffs or non-obvious choices worth recording for future archeology.
 
 ---
 

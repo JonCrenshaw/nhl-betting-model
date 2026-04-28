@@ -73,21 +73,30 @@ Decision record: [ADR-0001](../decisions/0001-warehouse-stack.md)
 r2://puckbunny-lake/
 ├── bronze/
 │   ├── nhl_api/
-│   │   ├── games/ingest_date=2026-04-22/games.parquet
-│   │   ├── skater_stats/ingest_date=.../
-│   │   ├── goalie_stats/ingest_date=.../
-│   │   └── pbp/ingest_date=.../
+│   │   ├── landing/ingest_date=2026-04-25/{uuid}.parquet
+│   │   ├── boxscore/ingest_date=2026-04-25/{uuid}.parquet
+│   │   ├── play-by-play/ingest_date=2026-04-25/{uuid}.parquet
+│   │   ├── skater_summary/ingest_date=.../    # M2 PR-F
+│   │   ├── goalie_summary/ingest_date=.../    # M2 PR-F
+│   │   ├── team_summary/ingest_date=.../      # M2 PR-F
+│   │   └── roster/ingest_date=.../            # M2 PR-F
 │   ├── odds_api/
 │   │   └── h2h_totals_spreads/ingest_date=.../
 │   ├── moneypuck/
-│   └── lineups/
+│   ├── lineups/
+│   └── _manifests/
+│       └── ingest_runs.jsonl   # append-only ingest log; see below
 └── historical/
     └── odds_archive/      # one-time purchased dataset
 ```
 
+The endpoint partition names match the URL slug exactly (e.g. `play-by-play/`, hyphenated, mirrors `/v1/gamecenter/{gameId}/play-by-play`) so a path is greppable against the source URL when debugging. File names are uuid hex so re-runs of the same `ingest_date` don't collide. The endpoint URL template is also recorded inside every row's typed envelope (`endpoint` column), giving two cross-checking views of provenance.
+
 **Partitioning.** Bronze data is always partitioned by `ingest_date`. This lets us reproduce any point-in-time query and makes incremental loads trivial.
 
 **Immutability.** Bronze files are append-only. Corrections are new ingests, not overwrites. This is the foundation of reproducibility.
+
+**Ingest manifest.** Every successful bronze write is recorded in `bronze/_manifests/ingest_runs.jsonl` — an append-only JSONL file with one row per `(endpoint_template, scope_key)` fetch (typically `scope_key = str(game_id)` for game-level endpoints, `str(season)` for season-scoped ones). The manifest is the dedupe primitive consulted by both the daily incremental loader (M2 PR-E) and the backfill CLI (M2 PR-G) — it answers "have we already ingested this `(endpoint, scope)`?" without scanning bronze partitions. The leading underscore on `_manifests/` keeps it out of `list_objects("bronze/nhl_api/")` walks, so dbt and downstream tooling never accidentally pick it up as a bronze partition. M2 ships a single-process / single-threaded reader-writer (read full file, append in memory, write back) — fine at our volume; M10's Dagster wiring will revisit if concurrent writers ever appear.
 
 ---
 
