@@ -39,6 +39,9 @@ __all__ = [
     "GameResponseBase",
     "LandingResponse",
     "PlayByPlayResponse",
+    "ScheduleDay",
+    "ScheduleGame",
+    "ScheduleResponse",
     "TeamRef",
     "assert_game_id_matches_season",
 ]
@@ -154,6 +157,54 @@ class PlayByPlayResponse(GameResponseBase):
 
     plays: list[dict[str, Any]]
     rosterSpots: list[dict[str, Any]]
+
+
+class ScheduleGame(GameResponseBase):
+    """One game in a ``/v1/schedule/{date}`` response.
+
+    Extends :class:`GameResponseBase` so the spike-§7 game-id-vs-season
+    invariant runs on every game returned by the schedule endpoint.
+    The schedule's per-game payload carries the same canonical metadata
+    columns as the gamecenter endpoints (``id``, ``season``,
+    ``gameType``, ``gameDate``, ``gameState``, ``startTimeUTC``,
+    ``awayTeam``, ``homeTeam``) plus extras (``venue``,
+    ``periodDescriptor``, ``threeMinRecap``, …) that ride along in
+    ``model_extra``.
+
+    Note that ``gameState`` here can be any of ``FUT``, ``PRE``,
+    ``LIVE``, ``CRIT``, ``OFF``, ``FINAL``, ``PPD`` — the schedule
+    walker filters to the "ingestible" set
+    (:data:`puckbunny.ingestion.nhl.endpoints.INGESTIBLE_GAME_STATES`).
+    """
+
+
+class ScheduleDay(BaseModel):
+    """One day's entry inside ``ScheduleResponse.gameWeek``.
+
+    Per spike notes §1, the schedule endpoint returns a *week* of games
+    keyed by ``gameWeek[*].date``, not just the requested date. The
+    daily walker iterates this list and selects the matching day. We
+    pin only the two fields the walker needs; ``dayAbbrev`` /
+    ``numberOfGames`` and friends are preserved via ``extra="allow"``.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    date: date
+    games: list[ScheduleGame]
+
+
+class ScheduleResponse(BaseModel):
+    """``/v1/schedule/{YYYY-MM-DD}`` typed shape.
+
+    Top-level fields like ``previousStartDate`` / ``nextStartDate`` /
+    ``preSeasonStartDate`` exist but the daily walker doesn't need
+    them. Any future additions ride in ``model_extra``.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    gameWeek: list[ScheduleDay]
 
 
 def assert_game_id_matches_season(game_id: int, season: int | str) -> None:

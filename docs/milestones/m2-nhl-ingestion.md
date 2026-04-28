@@ -1,6 +1,6 @@
 # M2 — NHL API Ingestion
 
-**Status.** Active. PR-A through PR-D merged on `main`; PR-E (schedule + daily incremental) next.
+**Status.** Active. PR-A through PR-E merged on `main`; PR-F (season-scoped loaders) next.
 **Roadmap line.** `M2 | NHL API ingestion | 4 weeks` (revised from 2–3 at kickoff).
 **Prerequisites met.** M1 complete on `main` (devcontainer, uv, dbt scaffold, CI).
 
@@ -179,8 +179,10 @@ Fetched one recent game's landing + boxscore + play-by-play against live API, wr
 **PR-D — Play-by-play loader** ✅ *complete (April 2026, branch `feat/m2-pr-d-pbp`)*
 `ingestion/nhl/play_by_play.py` built on PR-C primitives. PxP is the largest payload per game; validates the bronze layout works for volume. Pre-parser key scan landed in [`docs/ideas/prd-pbp-keys.md`](../ideas/prd-pbp-keys.md): coord/player-id presence confirmed on shooting events and faceoffs; three structural event types (`period-start`, `period-end`, `game-end`) carry no `details` block — silver (M3) treats those as known exceptions, bronze stays tolerant via `extra="allow"` on `PlayByPlayResponse`. CLI: `uv run python -m puckbunny.ingestion.nhl play-by-play --game-id <id>`. Bronze partition `bronze/nhl_api/play-by-play/ingest_date=YYYY-MM-DD/`. Cassette tests via the same committed-JSON-fixture + `httpx.MockTransport` pattern PR-C established.
 
-**PR-E — Schedule + daily incremental** (~2 days)
-`ingestion/nhl/schedule.py`. CLI: `uv run python -m puckbunny.ingestion.nhl daily [--date YYYY-MM-DD]` (defaults to yesterday in America/Toronto). The schedule endpoint returns a week of games keyed by `gameWeek[*].date`, so the daily walker iterates `gameWeek[*]` filtered to the requested date (per spike notes §1 and open questions). Fetches only games whose `gameState` ∈ `{FINAL, OFF}` and not yet in the manifest. End-to-end smoke test covers the full flow.
+**PR-E — Schedule + daily incremental** ✅ *complete (April 2026, branch `feat/m2-pr-e-schedule`)*
+`ingestion/nhl/schedule.py` (`ScheduleLoader` + `DailyLoader`) and `ingestion/manifest.py` (minimal append-only JSONL store at `bronze/_manifests/ingest_runs.jsonl`, per D7). CLI: `uv run python -m puckbunny.ingestion.nhl daily [--date YYYY-MM-DD] [--ingest-date YYYY-MM-DD]`. The `--date` default resolves to yesterday in America/Toronto via `zoneinfo` + the new `tzdata` runtime dep, so a morning UTC run picks up the previous Eastern slate even when the Eastern day boundary falls hours before UTC midnight. The walker iterates `gameWeek[*]` filtered to the target date, fetches only games whose `gameState ∈ {FINAL, OFF}` (constant `INGESTIBLE_GAME_STATES` in `endpoints.py`, per spike notes §1), and skips any game whose three game-level endpoints are already recorded in the manifest. End-to-end cassette test covers schedule + landing + boxscore + play-by-play in one flow; manifest dedupe is exercised both directions (skip when present, re-fetch when partial). Manifest entries are recorded per `(endpoint_template, game_id)` so PR-G's backfill can opt for per-endpoint dedupe without a schema change.
+
+Idempotency tradeoff documented in the `schedule.py` module docstring: dedupe is at the *game* level — if any one of the three endpoints is missing for a game, all three are re-fetched. This trades a small amount of duplicate landing/boxscore writes (rare partial-failure case) for substantially simpler logic. Manifest still records per endpoint so PR-G isn't constrained.
 
 **PR-F — Season-scoped loaders** (~2 days)
 `season_summaries.py` + `roster.py`. Separate from game-level because rate of change is "once per season," not "once per day." Budget a 30-minute probe of `api.nhle.com/stats/rest/v1` analogous to PR-A before committing to schemas (per spike notes open questions).
