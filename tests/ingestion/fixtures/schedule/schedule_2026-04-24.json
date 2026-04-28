@@ -1,0 +1,70 @@
+{
+  "previousStartDate": "2026-04-13",
+  "nextStartDate": "2026-04-27",
+  "gameWeek": [
+    {
+      "date": "2026-04-23",
+      "dayAbbrev": "THU",
+      "numberOfGames": 1,
+      "games": [
+        {
+          "id": 2025030120,
+          "season": 20252026,
+          "gameType": 3,
+          "gameDate": "2026-04-23",
+          "gameState": "OFF",
+          "startTimeUTC": "2026-04-23T23:00:00Z",
+          "venue": {"default": "Crypto.com Arena"},
+          "awayTeam": {"id": 22, "abbrev": "EDM", "score": 4},
+          "homeTeam": {"id": 26, "abbrev": "LAK", "score": 3}
+        }
+      ]
+    },
+    {
+      "date": "2026-04-24",
+      "dayAbbrev": "FRI",
+      "numberOfGames": 3,
+      "games": [
+        {
+          "id": 2025030123,
+          "season": 20252026,
+          "gameType": 3,
+          "gameDate": "2026-04-24",
+          "gameState": "OFF",
+          "startTimeUTC": "2026-04-24T23:00:00Z",
+          "venue": {"default": "Bell Centre"},
+          "awayTeam": {"id": 14, "abbrev": "TBL", "score": 2},
+          "homeTeam": {"id": 8, "abbrev": "MTL", "score": 3}
+        },
+        {
+          "id": 2025030124,
+          "season": 20252026,
+          "gameType": 3,
+          "gameDate": "2026-04-24",
+          "gameState": "LIVE",
+          "startTimeUTC": "2026-04-24T23:30:00Z",
+          "venue": {"default": "Scotiabank Arena"},
+          "awayTeam": {"id": 6, "abbrev": "BOS", "score": 1},
+          "homeTeam": {"id": 10, "abbrev": "TOR", "score": 1}
+        },
+        {
+          "id": 2025030125,
+          "season": 20252026,
+          "gameType": 3,
+          "gameDate": "2026-04-24",
+          "gameState": "FUT",
+          "startTimeUTC": "2026-04-25T01:00:00Z",
+          "venue": {"default": "Capital One Arena"},
+          "awayTeam": {"id": 3, "abbrev": "NYR"},
+          "homeTeam": {"id": 15, "abbrev": "WSH"}
+        }
+      ]
+    },
+    {
+      "date": "2026-04-25",
+      "dayAbbrev": "SAT",
+      "numberOfGames": 0,
+      "games": []
+    }
+  ]
+}

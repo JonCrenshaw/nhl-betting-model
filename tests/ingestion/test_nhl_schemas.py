@@ -19,6 +19,9 @@ from puckbunny.ingestion.nhl.schemas import (
     BoxscoreResponse,
     LandingResponse,
     PlayByPlayResponse,
+    ScheduleDay,
+    ScheduleGame,
+    ScheduleResponse,
     TeamRef,
     assert_game_id_matches_season,
 )
@@ -27,6 +30,9 @@ _FIXTURES_DIR: Path = Path(__file__).parent / "fixtures" / "games"
 _LANDING_FIXTURE: Path = _FIXTURES_DIR / "landing_2025030123.json"
 _BOXSCORE_FIXTURE: Path = _FIXTURES_DIR / "boxscore_2025030123.json"
 _PBP_FIXTURE: Path = _FIXTURES_DIR / "play_by_play_2025030123.json"
+_SCHEDULE_FIXTURE: Path = (
+    Path(__file__).parent / "fixtures" / "schedule" / "schedule_2026-04-24.json"
+)
 
 
 def _load_landing() -> dict[str, Any]:
@@ -197,3 +203,69 @@ def test_team_ref_preserves_extras() -> None:
     assert ref.model_extra is not None
     assert ref.model_extra.get("score") == 2
     assert ref.model_extra.get("logo") == "https://example/x.svg"
+
+
+# --------------------------------------------------------------------
+# ScheduleResponse / ScheduleDay / ScheduleGame
+# --------------------------------------------------------------------
+
+
+def _load_schedule() -> dict[str, Any]:
+    data: dict[str, Any] = json.loads(_SCHEDULE_FIXTURE.read_text(encoding="utf-8"))
+    return data
+
+
+def test_schedule_parses_hand_crafted_fixture() -> None:
+    payload = _load_schedule()
+    parsed = ScheduleResponse.model_validate(payload)
+    assert len(parsed.gameWeek) == 3
+    assert all(isinstance(d, ScheduleDay) for d in parsed.gameWeek)
+    target_day = parsed.gameWeek[1]
+    assert target_day.date.isoformat() == "2026-04-24"
+    assert all(isinstance(g, ScheduleGame) for g in target_day.games)
+
+
+def test_schedule_game_inherits_game_id_invariant() -> None:
+    """Spike-§7 invariant must run on every schedule game too — the
+    daily walker would otherwise be the first place to surface API
+    encoding drift."""
+    payload = _load_schedule()
+    # Mutate one game's id to break the encoding (season=20252026 →
+    # year prefix should be 2025; 2024 makes it inconsistent).
+    target_day = next(d for d in payload["gameWeek"] if d["date"] == "2026-04-24")
+    target_day["games"][0]["id"] = 2024030123  # season still 20252026
+    with pytest.raises(ValidationError, match="game-id format violation"):
+        ScheduleResponse.model_validate(payload)
+
+
+def test_schedule_response_preserves_top_level_extras() -> None:
+    payload = _load_schedule()
+    payload["someBrandNewKey"] = {"foo": "bar"}
+    parsed = ScheduleResponse.model_validate(payload)
+    assert parsed.model_extra is not None
+    assert parsed.model_extra.get("someBrandNewKey") == {"foo": "bar"}
+
+
+def test_schedule_day_preserves_extras() -> None:
+    payload = _load_schedule()
+    target_day = next(d for d in payload["gameWeek"] if d["date"] == "2026-04-24")
+    # ``dayAbbrev`` and ``numberOfGames`` are extras the walker doesn't
+    # need; they must round-trip via model_extra.
+    parsed = ScheduleResponse.model_validate(payload)
+    day = next(d for d in parsed.gameWeek if d.date.isoformat() == "2026-04-24")
+    assert day.model_extra is not None
+    assert day.model_extra.get("dayAbbrev") == target_day["dayAbbrev"]
+    assert day.model_extra.get("numberOfGames") == target_day["numberOfGames"]
+
+
+def test_schedule_response_requires_game_week() -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        ScheduleResponse.model_validate({})
+    assert "gameWeek" in str(exc_info.value)
+
+
+def test_schedule_day_requires_date_and_games() -> None:
+    with pytest.raises(ValidationError):
+        ScheduleDay.model_validate({"date": "2026-04-24"})  # missing games
+    with pytest.raises(ValidationError):
+        ScheduleDay.model_validate({"games": []})  # missing date
