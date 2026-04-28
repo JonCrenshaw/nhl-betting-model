@@ -22,6 +22,11 @@ dependencies = [
   # Storage primitives.
   "pyarrow>=17.0",
   "boto3>=1.34",
+  # IANA timezone DB. zoneinfo on Windows (and slim Linux base images)
+  # has no system tzdata fallback; the daily CLI's "yesterday in
+  # America/Toronto" default depends on this being importable. Tiny
+  # wheel (~600 KB), no transitive deps.
+  "tzdata>=2024.1",
 ]
 
 # Dev tooling lives in a PEP 735 dependency group, not as a project extra,
