@@ -34,7 +34,7 @@ Explicit quality gates so "done" is unambiguous:
 
 ### D1. Which NHL API surface
 
-**Recommendation: `api-web.nhle.com` + `api.nhle.com/stats/rest/v1` as primary, no fallback built.**
+**Recommendation: `api-web.nhle.com` + `api.nhle.com/stats/rest/en` as primary, no fallback built.**
 
 The legacy `statsapi.web.nhl.com` was effectively deprecated in 2023 when NHL.com migrated to the modern endpoints. Committing to the modern surface avoids building a shim layer for a deprecated API. The PR-A spike (April 2026, see [`docs/ideas/pra-spike-notes.md`](../ideas/pra-spike-notes.md)) confirmed the modern surface returns 200s for `landing`, `boxscore`, and `play-by-play` with the planned `User-Agent` and no auth, against a recent playoff game. Historical depth (2015–16 onward) is verified opportunistically as PR-G backfills; if a specific endpoint is only on the legacy surface, we add a narrow, one-off pull and document it in ADR-0003.
 
@@ -153,13 +153,13 @@ tests/
 - `/v1/club-schedule-season/{TEAM}/{SEASON}` — per-team season schedule for backfill discovery.
 - `/v1/roster/{TEAM}/{SEASON}` — rosters.
 
-`api.nhle.com/stats/rest/v1`:
+`api.nhle.com/stats/rest/en` (note the mandatory `en` locale segment — `/v1/` is `api-web.nhle.com`'s convention, not this surface's; see PR-F0 spike notes):
 
-- `/skater/summary?cayenneExp=seasonId={SEASON}` — season-level skater stats.
-- `/goalie/summary?cayenneExp=seasonId={SEASON}` — season-level goalie stats.
-- `/team/summary?cayenneExp=seasonId={SEASON}` — team-level season stats.
+- `/skater/summary?cayenneExp=seasonId={SEASON}&limit=-1` — season-level skater stats.
+- `/goalie/summary?cayenneExp=seasonId={SEASON}&limit=-1` — season-level goalie stats.
+- `/team/summary?cayenneExp=seasonId={SEASON}&limit=-1` — team-level season stats.
 
-Exact URL shapes and pagination behavior are finalized in PR-A.
+Exact URL shapes and pagination behavior are finalized in PR-A for the `api-web` endpoints and in PR-F0 ([`docs/ideas/prf-stats-rest-spike-notes.md`](../ideas/prf-stats-rest-spike-notes.md)) for the stats-rest endpoints.
 
 ---
 
@@ -184,8 +184,17 @@ Fetched one recent game's landing + boxscore + play-by-play against live API, wr
 
 Idempotency tradeoff documented in the `schedule.py` module docstring: dedupe is at the *game* level — if any one of the three endpoints is missing for a game, all three are re-fetched. This trades a small amount of duplicate landing/boxscore writes (rare partial-failure case) for substantially simpler logic. Manifest still records per endpoint so PR-G isn't constrained.
 
-**PR-F — Season-scoped loaders** (~2 days)
-`season_summaries.py` + `roster.py`. Separate from game-level because rate of change is "once per season," not "once per day." Budget a 30-minute probe of `api.nhle.com/stats/rest/v1` analogous to PR-A before committing to schemas (per spike notes open questions).
+**PR-F — Season-scoped loaders** (~3 days, split into F0/F1/F2)
+Separate from game-level because rate of change is "once per season," not "once per day." Split into three sub-PRs at planning time after the PR-A pattern: an isolated spike to lock in the API contract, then per-loader implementation PRs.
+
+- **PR-F0 — Spike: stats-rest probe** ✅ *complete (April 2026, branch `spike/m2-stats-rest-probe`)*
+  Probed `api.nhle.com/stats/rest/en/{skater,goalie,team}/summary` against the live API. Findings in [`docs/ideas/prf-stats-rest-spike-notes.md`](../ideas/prf-stats-rest-spike-notes.md). Headlines: surface path is `/stats/rest/en/`, not `/v1/` (M2-doc correction folded in alongside this notes file); `limit=-1` returns the full result set in one GET (defensive `len(data) == total` assertion is the contract); unfiltered response pools regular + playoff aggregates for finalized seasons (`gameTypeId` filter decision deferred to ADR-0003 with revisit trigger). De-risks PR-F1; PR-F2 doesn't need its own spike since it lives on the `api-web.nhle.com` surface PR-A already validated.
+
+- **PR-F1 — Season summaries** (~1.5 days)
+  `season_summaries.py` covering `/skater/summary`, `/goalie/summary`, `/team/summary`. One GET per `(endpoint, season)` with `limit=-1`; per-endpoint pydantic row schemas; `scope_key = season` in the manifest. CLI: `uv run python -m puckbunny.ingestion.nhl season-summaries --season {SEASON}`. Cadence is weekly + post-Stanley-Cup-Final, NOT daily (per PR-F0 notes §6) — this loader is not wired into PR-E's daily walker.
+
+- **PR-F2 — Roster + season schedule** (~1 day)
+  `roster.py` covering `/v1/roster/{TEAM}/{SEASON}` and `/v1/club-schedule-season/{TEAM}/{SEASON}` on `api-web.nhle.com`. One GET per `(endpoint, season, team)` with `scope_key = f"{season}|{team_abbrev}"`. No spike needed — surface validated by PR-A; payload shapes well-understood.
 
 **PR-G — Backfill CLI + manifest** (~1 day)
 `uv run python -m puckbunny.ingestion.nhl backfill --from-season 2015-16 --to-season 2025-26`. Uses manifest to resume after interruption. Cost-check step at end: log bytes written and projected monthly R2 cost.
