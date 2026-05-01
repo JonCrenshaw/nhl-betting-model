@@ -46,7 +46,7 @@ What this answers
    explicit ``sort=`` param is honored and whether the default order
    is deterministic.
 5. **Per-row size and projection.** Multiply observed row JSON size
-   by ~1,000 skaters × 11 seasons to update the cost line — PR-A
+   by ~1,000 skaters X 11 seasons to update the cost line — PR-A
    measured game-level bronze at ~350 MB; season-summaries should
    be a fraction of that, but worth confirming before PR-F1 ships.
 6. **In-progress season behavior.** ``seasonId=20252026`` is mid-
