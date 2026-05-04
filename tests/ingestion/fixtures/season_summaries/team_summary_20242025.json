@@ -1,0 +1,35 @@
+{
+  "data": [
+    {
+      "seasonId": 20242025,
+      "teamId": 15,
+      "teamFullName": "Washington Capitals",
+      "gamesPlayed": 92,
+      "wins": 57,
+      "losses": 21,
+      "otLosses": 4,
+      "ties": null,
+      "points": 118,
+      "pointPct": 0.6413,
+      "regulationAndOtWins": 51,
+      "goalsForPerGame": 3.45,
+      "goalsAgainstPerGame": 2.78
+    },
+    {
+      "seasonId": 20242025,
+      "teamId": 29,
+      "teamFullName": "Columbus Blue Jackets",
+      "gamesPlayed": 82,
+      "wins": 32,
+      "losses": 38,
+      "otLosses": 12,
+      "ties": null,
+      "points": 76,
+      "pointPct": 0.4634,
+      "regulationAndOtWins": 28,
+      "goalsForPerGame": 2.91,
+      "goalsAgainstPerGame": 3.34
+    }
+  ],
+  "total": 2
+}

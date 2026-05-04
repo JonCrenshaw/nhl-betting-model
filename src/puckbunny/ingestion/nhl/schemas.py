@@ -37,12 +37,18 @@ if TYPE_CHECKING:
 __all__ = [
     "BoxscoreResponse",
     "GameResponseBase",
+    "GoalieSummaryResponse",
+    "GoalieSummaryRow",
     "LandingResponse",
     "PlayByPlayResponse",
     "ScheduleDay",
     "ScheduleGame",
     "ScheduleResponse",
+    "SkaterSummaryResponse",
+    "SkaterSummaryRow",
     "TeamRef",
+    "TeamSummaryResponse",
+    "TeamSummaryRow",
     "assert_game_id_matches_season",
 ]
 
@@ -222,3 +228,140 @@ def assert_game_id_matches_season(game_id: int, season: int | str) -> None:
             f"season-start-year {encoded_year}, but season={season} "
             f"begins {season_year}."
         )
+
+
+# ---------------------------------------------------------------------------
+# Season-scoped summary endpoints (PR-F1).
+#
+# Per the PR-F0 spike (``docs/ideas/prf-stats-rest-spike-notes.md``):
+# every season-summary response is shaped as
+#
+#     {"data": [<row>, <row>, ...], "total": N}
+#
+# and ``len(data) == total`` is the contract — the loader asserts this
+# before writing bronze. Per-row schemas pin only the fields that
+# downstream silver promotion can rely on; everything else rides along
+# in ``response_json`` via ``extra="allow"``.
+#
+# Row schemas overlap on common fields (``seasonId``,
+# ``playerId``/``teamId``, ``gamesPlayed``, ``goals``, ``assists``,
+# ``points``) but diverge enough on the rest (faceoff %, save %,
+# team-only fields like ``pointPct`` and ``regulationAndOtWins``) to
+# not bother with a shared base. The spike notes recommend per-endpoint
+# row classes for this reason.
+# ---------------------------------------------------------------------------
+
+
+class _SeasonSummaryRowBase(BaseModel):
+    """Common ``extra="allow"`` config for every season-summary row.
+
+    Not exposed in ``__all__`` — concrete subclasses are. Exists only
+    to factor the ``model_config`` and the ``seasonId`` pin that every
+    row carries (the spike confirmed this on first row of every
+    response).
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    seasonId: int
+
+
+class SkaterSummaryRow(_SeasonSummaryRowBase):
+    """One row in a ``skater/summary`` response's ``data`` array.
+
+    Pinned fields are the ones the loader / silver-layer M3 work will
+    rely on: identity (``playerId``), volume (``gamesPlayed``), and
+    the canonical scoring stats (``goals``, ``assists``, ``points``).
+    Everything else (``shots``, ``faceoffWinPct``, ``timeOnIcePerGame``,
+    ``teamAbbrevs``, …) rides along via ``extra="allow"``; silver picks
+    them up from the verbatim ``response_json`` envelope.
+    """
+
+    playerId: int
+    gamesPlayed: int
+    goals: int
+    assists: int
+    points: int
+
+
+class GoalieSummaryRow(_SeasonSummaryRowBase):
+    """One row in a ``goalie/summary`` response's ``data`` array.
+
+    Pinned fields mirror :class:`SkaterSummaryRow` for identity +
+    volume; goalie-specific stats (``savePct``, ``goalsAgainstAverage``,
+    ``shutouts``, …) are preserved via ``extra="allow"``. The schema
+    is intentionally permissive about which optional goalie metrics
+    appear — partial-season aggregates can omit fields entirely.
+    """
+
+    playerId: int
+    gamesPlayed: int
+
+
+class TeamSummaryRow(_SeasonSummaryRowBase):
+    """One row in a ``team/summary`` response's ``data`` array.
+
+    Pinned fields are identity (``teamId``) and volume (``gamesPlayed``).
+    Team-only metrics like ``pointPct``, ``regulationAndOtWins``, and
+    ``goalsForPerGame`` ride along via ``extra="allow"``.
+    """
+
+    teamId: int
+    gamesPlayed: int
+
+
+class _SeasonSummaryResponseBase(BaseModel):
+    """Shared ``{data, total}`` envelope contract.
+
+    Per spike §2 the response shape is uniform across the three
+    season-summary endpoints; the only thing that varies is the row
+    type inside ``data``. Concrete subclasses re-declare ``data`` with
+    the appropriate row class so pydantic validates each row.
+
+    The ``len(data) == total`` invariant is enforced via a
+    post-validator so any future re-parse of the bronze envelope (not
+    just the loader's defensive check at fetch time) raises on
+    mismatch.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    total: int
+
+    @model_validator(mode="after")
+    def _validate_data_total_match(self) -> Self:
+        """Assert ``len(data) == total``.
+
+        Per PR-F0 spike §2 this is the surface's pagination contract
+        when ``limit=-1`` — preserved as a model invariant so re-parse
+        catches drift even if the original fetch's defensive check is
+        bypassed.
+        """
+        # ``data`` is declared on each concrete subclass; access via
+        # attribute lookup so this validator is reusable.
+        data: list[Any] = getattr(self, "data", [])
+        if len(data) != self.total:
+            raise ValueError(
+                f"season-summary envelope contract violation: total={self.total} "
+                f"but len(data)={len(data)}. limit=-1 is supposed to return "
+                f"the full set in one response."
+            )
+        return self
+
+
+class SkaterSummaryResponse(_SeasonSummaryResponseBase):
+    """``/stats/rest/en/skater/summary`` typed shape."""
+
+    data: list[SkaterSummaryRow]
+
+
+class GoalieSummaryResponse(_SeasonSummaryResponseBase):
+    """``/stats/rest/en/goalie/summary`` typed shape."""
+
+    data: list[GoalieSummaryRow]
+
+
+class TeamSummaryResponse(_SeasonSummaryResponseBase):
+    """``/stats/rest/en/team/summary`` typed shape."""
+
+    data: list[TeamSummaryRow]

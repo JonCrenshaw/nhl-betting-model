@@ -1,0 +1,33 @@
+{
+  "data": [
+    {
+      "seasonId": 20242025,
+      "playerId": 8475660,
+      "goalieFullName": "Connor Hellebuyck",
+      "teamAbbrevs": "WPG",
+      "gamesPlayed": 63,
+      "wins": 47,
+      "losses": 12,
+      "otLosses": 3,
+      "ties": null,
+      "savePct": 0.925,
+      "goalsAgainstAverage": 2.00,
+      "shutouts": 8
+    },
+    {
+      "seasonId": 20242025,
+      "playerId": 8478406,
+      "goalieFullName": "James Reimer",
+      "teamAbbrevs": "ANA,BUF",
+      "gamesPlayed": 18,
+      "wins": 5,
+      "losses": 8,
+      "otLosses": 2,
+      "ties": null,
+      "savePct": 0.892,
+      "goalsAgainstAverage": 3.21,
+      "shutouts": 0
+    }
+  ],
+  "total": 2
+}

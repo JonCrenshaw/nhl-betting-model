@@ -1,0 +1,37 @@
+{
+  "data": [
+    {
+      "seasonId": 20242025,
+      "playerId": 8470600,
+      "skaterFullName": "Ryan Suter",
+      "teamAbbrevs": "STL",
+      "positionCode": "D",
+      "gamesPlayed": 76,
+      "goals": 3,
+      "assists": 19,
+      "points": 22,
+      "shots": 84,
+      "plusMinus": -8,
+      "faceoffWinPct": null,
+      "ties": null,
+      "timeOnIcePerGame": 1142.5
+    },
+    {
+      "seasonId": 20242025,
+      "playerId": 8478402,
+      "skaterFullName": "Connor McDavid",
+      "teamAbbrevs": "EDM",
+      "positionCode": "C",
+      "gamesPlayed": 67,
+      "goals": 26,
+      "assists": 74,
+      "points": 100,
+      "shots": 211,
+      "plusMinus": 18,
+      "faceoffWinPct": 0.4912,
+      "ties": null,
+      "timeOnIcePerGame": 1340.2
+    }
+  ],
+  "total": 2
+}

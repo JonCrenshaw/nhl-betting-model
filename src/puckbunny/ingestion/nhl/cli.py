@@ -37,6 +37,10 @@ from puckbunny.ingestion.nhl.schedule import (
     ScheduleLoader,
     yesterday_in_toronto,
 )
+from puckbunny.ingestion.nhl.season_summaries import (
+    SeasonSummariesLoader,
+    SeasonSummariesLoadResult,
+)
 from puckbunny.logging_setup import configure_logging
 from puckbunny.storage.r2 import R2ObjectStorage
 
@@ -64,17 +68,21 @@ def main(
     | None = None,
     daily_loader_factory: Callable[[argparse.Namespace], tuple[DailyLoader, Callable[[], None]]]
     | None = None,
+    season_summaries_loader_factory: Callable[
+        [argparse.Namespace], tuple[SeasonSummariesLoader, Callable[[], None]]
+    ]
+    | None = None,
 ) -> int:
     """CLI entry point. Returns a process exit code.
 
-    ``loader_factory``, ``pbp_loader_factory``, and
-    ``daily_loader_factory`` are the test seams: production callers
-    leave them unset (the defaults build R2-backed loaders from
-    :mod:`puckbunny.config`); tests inject factories that wire the
-    loader to a local-filesystem storage + a mock HTTP transport. The
-    factories are kept separate because the loaders produce different
-    result shapes; collapsing them into one would add stringly-typed
-    branching for no real win.
+    ``loader_factory``, ``pbp_loader_factory``,
+    ``daily_loader_factory``, and ``season_summaries_loader_factory``
+    are the test seams: production callers leave them unset (the
+    defaults build R2-backed loaders from :mod:`puckbunny.config`);
+    tests inject factories that wire the loader to a local-filesystem
+    storage + a mock HTTP transport. The factories are kept separate
+    because the loaders produce different result shapes; collapsing
+    them into one would add stringly-typed branching for no real win.
     """
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -85,6 +93,10 @@ def main(
         return _cmd_play_by_play(args, pbp_loader_factory=pbp_loader_factory)
     if args.command == "daily":
         return _cmd_daily(args, daily_loader_factory=daily_loader_factory)
+    if args.command == "season-summaries":
+        return _cmd_season_summaries(
+            args, season_summaries_loader_factory=season_summaries_loader_factory
+        )
 
     # argparse should already have errored on an unknown command via
     # ``required=True`` on the subparsers; this is defense in depth.
@@ -166,6 +178,37 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Override the bronze partition date (YYYY-MM-DD). Defaults to today's UTC date.",
     )
     daily.add_argument(
+        "--log-level",
+        default="INFO",
+        help="Logging threshold (DEBUG/INFO/WARNING/ERROR). Default INFO.",
+    )
+
+    season_summaries = sub.add_parser(
+        "season-summaries",
+        help=(
+            "Fetch skater+goalie+team season summaries for one season "
+            "and write to bronze. Cadence is weekly + post-Stanley-Cup-Final, "
+            "NOT daily — see season_summaries.py module docstring."
+        ),
+    )
+    season_summaries.add_argument(
+        "--season",
+        type=str,
+        required=True,
+        help=(
+            "NHL season identifier in YYYYYYYY form (e.g. '20242025' for "
+            "the 2024-25 season). Accepts string only — the leading-zero "
+            "concern doesn't apply to seasons but ``str`` keeps the CLI "
+            "shape predictable across shells."
+        ),
+    )
+    season_summaries.add_argument(
+        "--ingest-date",
+        type=date.fromisoformat,
+        default=None,
+        help="Override the bronze partition date (YYYY-MM-DD). Defaults to today's UTC date.",
+    )
+    season_summaries.add_argument(
         "--log-level",
         default="INFO",
         help="Logging threshold (DEBUG/INFO/WARNING/ERROR). Default INFO.",
@@ -354,6 +397,65 @@ def _print_daily_result(result: DailyLoadResult) -> None:
         "games_loaded": result.games_loaded,
         "games_skipped": result.games_skipped,
         "games": games_summary,
+    }
+    sys.stdout.write(json.dumps(summary) + "\n")
+    sys.stdout.flush()
+
+
+def _cmd_season_summaries(
+    args: argparse.Namespace,
+    *,
+    season_summaries_loader_factory: Callable[
+        [argparse.Namespace], tuple[SeasonSummariesLoader, Callable[[], None]]
+    ]
+    | None,
+) -> int:
+    configure_logging(level=args.log_level)
+    factory = season_summaries_loader_factory or _default_season_summaries_loader_factory
+    loader, close = factory(args)
+    try:
+        result = loader.load_one(args.season, ingest_date=args.ingest_date)
+    finally:
+        close()
+    _print_season_summaries_result(result)
+    return 0
+
+
+def _default_season_summaries_loader_factory(
+    _args: argparse.Namespace,
+) -> tuple[SeasonSummariesLoader, Callable[[], None]]:
+    """Wire production collaborators from environment-driven settings."""
+    settings = get_settings()
+    storage: ObjectStorage = R2ObjectStorage.from_settings(settings)
+    client = RateLimitedClient(
+        rate_per_sec=settings.ingest_rate_limit_per_sec,
+        user_agent=settings.ingest_user_agent,
+        request_timeout_seconds=settings.ingest_request_timeout_seconds,
+        max_retries=settings.ingest_max_retries,
+    )
+    loader = SeasonSummariesLoader(client, storage)
+    return loader, client.close
+
+
+def _print_season_summaries_result(result: SeasonSummariesLoadResult) -> None:
+    """Emit a single-line JSON summary for the season-summaries subcommand."""
+    summary = {
+        "season": result.season,
+        "skater_summary": {
+            "key": result.skater_summary.key,
+            "rows": result.skater_summary.rows,
+            "bytes": result.skater_summary.bytes,
+        },
+        "goalie_summary": {
+            "key": result.goalie_summary.key,
+            "rows": result.goalie_summary.rows,
+            "bytes": result.goalie_summary.bytes,
+        },
+        "team_summary": {
+            "key": result.team_summary.key,
+            "rows": result.team_summary.rows,
+            "bytes": result.team_summary.bytes,
+        },
     }
     sys.stdout.write(json.dumps(summary) + "\n")
     sys.stdout.flush()
