@@ -36,11 +36,14 @@ if TYPE_CHECKING:
 
 __all__ = [
     "BoxscoreResponse",
+    "ClubScheduleSeasonResponse",
     "GameResponseBase",
     "GoalieSummaryResponse",
     "GoalieSummaryRow",
     "LandingResponse",
     "PlayByPlayResponse",
+    "RosterPlayer",
+    "RosterResponse",
     "ScheduleDay",
     "ScheduleGame",
     "ScheduleResponse",
@@ -365,3 +368,96 @@ class TeamSummaryResponse(_SeasonSummaryResponseBase):
     """``/stats/rest/en/team/summary`` typed shape."""
 
     data: list[TeamSummaryRow]
+
+
+# ---------------------------------------------------------------------------
+# Per-team season-scoped endpoints (PR-F2).
+#
+# Per the PR-F2 spike (``docs/ideas/prf2-spike-notes.md``):
+#
+# * ``/v1/roster/{TEAM}/{SEASON}`` returns
+#   ``{"forwards": [...], "defensemen": [...], "goalies": [...]}`` —
+#   three positionally-keyed lists, no top-level envelope, no embedded
+#   ``season`` or ``team``. The loader propagates those from request
+#   context.
+# * ``/v1/club-schedule-season/{TEAM}/{SEASON}`` returns
+#   ``{"previousSeason", "currentSeason", "nextSeason", "clubTimezone",
+#   "clubUTCOffset", "games": [...]}``. ``currentSeason`` is the
+#   defensive invariant for ``season``.
+#
+# Both endpoints' rich per-row content (player bio fields, per-game
+# scoring/venue/broadcast metadata) rides along in ``response_json``;
+# silver M3 reads it from there. We pin only the join-keys and a
+# minimum-volume invariant.
+# ---------------------------------------------------------------------------
+
+
+class RosterPlayer(BaseModel):
+    """Minimal per-player identifier carried in roster responses.
+
+    Spike confirmed every roster entry across forwards / defensemen /
+    goalies carries ``id``, ``firstName``, ``lastName``, ``positionCode``,
+    and ``sweaterNumber``. Bio fields (``heightInInches``,
+    ``birthCity``, ``birthStateProvince``, …) are present-but-optional
+    — in the TOR 2024-25 fixture roughly 70% of players across all
+    position groups carry ``birthStateProvince`` and the rest don't
+    (likely a US/Canada vs. international split). Anything not pinned
+    here rides along via ``extra="allow"``.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    id: int
+    positionCode: str
+
+
+class RosterResponse(BaseModel):
+    """``/v1/roster/{TEAM}/{SEASON}`` typed shape.
+
+    Three positionally-keyed lists. The ``positionCode`` on each player
+    distinguishes ``L`` / ``C`` / ``R`` inside ``forwards``, ``D``
+    inside ``defensemen``, and ``G`` inside ``goalies``; we don't
+    enforce that pairing as a model invariant because the silver layer
+    will reconcile against ``dim_player`` anyway and a misclassified
+    position is recoverable from ``response_json``.
+
+    No top-level ``season`` or ``team`` field. The loader writes those
+    into the bronze envelope from request context.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    forwards: list[RosterPlayer]
+    defensemen: list[RosterPlayer]
+    goalies: list[RosterPlayer]
+
+
+class ClubScheduleSeasonResponse(BaseModel):
+    """``/v1/club-schedule-season/{TEAM}/{SEASON}`` typed shape.
+
+    ``games`` mixes ``gameType`` 1 (preseason), 2 (regular), and 3
+    (playoffs); per the spike fixture (TOR 2024-25), the field
+    distribution was ``{1: 6, 2: 82, 3: 13}``. Silver picks them apart;
+    bronze stays uniform.
+
+    ``currentSeason`` is asserted by the loader against the requested
+    season as a defensive invariant — a mismatch would mean the API
+    routed our request to a different season and we'd be silently
+    landing the wrong payload in bronze.
+
+    Per-game shape overlaps :class:`ScheduleGame` (same ``id``,
+    ``season``, ``gameType``, ``gameDate``, ``gameState``, ``awayTeam``,
+    ``homeTeam`` keys) but the schedule endpoint and this one are
+    separate ingestion paths — silver reconciles. We model ``games`` as
+    ``list[dict[str, Any]]`` here rather than ``list[ScheduleGame]`` so
+    a per-game schema regression on the club-schedule surface doesn't
+    break ingest; the spike-§7 game-id-vs-season invariant runs in
+    silver M3 against this surface.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    previousSeason: int
+    currentSeason: int
+    nextSeason: int
+    games: list[dict[str, Any]]

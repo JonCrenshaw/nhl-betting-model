@@ -123,7 +123,7 @@ TEAM_SUMMARY_ENDPOINT_TEMPLATE: str = "/stats/rest/en/team/summary"
 STATS_REST_LIMIT_ALL: int = -1
 
 
-def _format_season_id(season: int | str) -> str:
+def format_season_id(season: int | str) -> str:
     """Normalize a season identifier to the 8-char ``YYYYYYYY`` form.
 
     Accepts ``int`` (``20242025``) or ``str`` (``"20242025"``). The
@@ -147,19 +147,19 @@ def skater_summary_url(season: int | str) -> str:
     the ``cayenneExp`` and ``limit`` params at request time so the
     template-vs-substituted distinction stays clean.
     """
-    _format_season_id(season)  # validate eagerly; result not interpolated
+    format_season_id(season)  # validate eagerly; result not interpolated
     return f"{NHL_STATS_REST_BASE_URL}/skater/summary"
 
 
 def goalie_summary_url(season: int | str) -> str:
     """Return the absolute ``goalie/summary`` URL for ``season``."""
-    _format_season_id(season)
+    format_season_id(season)
     return f"{NHL_STATS_REST_BASE_URL}/goalie/summary"
 
 
 def team_summary_url(season: int | str) -> str:
     """Return the absolute ``team/summary`` URL for ``season``."""
-    _format_season_id(season)
+    format_season_id(season)
     return f"{NHL_STATS_REST_BASE_URL}/team/summary"
 
 
@@ -173,7 +173,7 @@ def season_summary_query_params(season: int | str) -> dict[str, object]:
     schema-of-the-call lives next to the URL definition.
     """
     return {
-        "cayenneExp": f"seasonId={_format_season_id(season)}",
+        "cayenneExp": f"seasonId={format_season_id(season)}",
         "limit": STATS_REST_LIMIT_ALL,
     }
 
@@ -194,6 +194,154 @@ def season_start_date(season: int | str) -> date:
     filter by ``WHERE season = '20242025'`` rather than by
     ``event_date`` ranges.
     """
-    season_str = _format_season_id(season)
+    season_str = format_season_id(season)
     start_year = int(season_str[:4])
     return date(start_year, 10, 1)
+
+
+# ---------------------------------------------------------------------------
+# Per-team season-scoped endpoints (PR-F2).
+#
+# Both endpoints live on the ``api-web.nhle.com`` surface validated by
+# PR-A. One GET per ``(team, season)`` with the team abbreviation and
+# 8-digit season interpolated into the path. The PR-F2 spike
+# (``docs/ideas/prf2-spike-notes.md``) confirmed payload shapes and the
+# 404 contract for invalid ``(team, season)`` pairs.
+# ---------------------------------------------------------------------------
+
+#: Endpoint templates used as the canonical identifier in the bronze
+#: ``endpoint`` column. Placeholder names match the NHL API's own URL
+#: segments (``team``, ``season``) for grep-friendly cross-reference.
+ROSTER_ENDPOINT_TEMPLATE: str = "/v1/roster/{team}/{season}"
+CLUB_SCHEDULE_SEASON_ENDPOINT_TEMPLATE: str = "/v1/club-schedule-season/{team}/{season}"
+
+
+def normalize_team_abbrev(team: str) -> str:
+    """Normalize a team abbreviation to the API's expected casing.
+
+    The NHL API accepts uppercase three-letter abbreviations
+    (e.g. ``TOR``, ``MTL``, ``UTA``). Lower / mixed case 404s. We
+    upper-case eagerly so callers can pass either form and we still
+    hit the right URL — but we don't validate against the season's
+    membership set here; that's :func:`team_abbrevs`'s job and is
+    enforced one level up in the loader / CLI.
+    """
+    upper = team.strip().upper()
+    if not upper or not upper.isalpha() or len(upper) != 3:
+        raise ValueError(f"team must be a 3-letter abbreviation like 'TOR', got {team!r}")
+    return upper
+
+
+def roster_url(team: str, season: int | str) -> str:
+    """Return the absolute ``roster`` URL for ``(team, season)``.
+
+    Spike-confirmed shape: top-level ``{"forwards": [...],
+    "defensemen": [...], "goalies": [...]}`` with no embedded
+    ``season`` or ``team`` fields. The loader propagates those from
+    the request context into the bronze envelope columns rather than
+    parsing them from the response.
+    """
+    return f"{NHL_API_BASE_URL}/v1/roster/{normalize_team_abbrev(team)}/{format_season_id(season)}"
+
+
+def club_schedule_season_url(team: str, season: int | str) -> str:
+    """Return the absolute ``club-schedule-season`` URL for ``(team, season)``.
+
+    Spike-confirmed shape: top-level
+    ``{"previousSeason": int, "currentSeason": int, "nextSeason": int,
+    "clubTimezone": str, "clubUTCOffset": str, "games": [...]}``. The
+    ``games`` list mixes ``gameType`` 1 (preseason), 2 (regular), and 3
+    (playoffs); silver picks them apart. ``currentSeason`` matches the
+    requested ``season`` — useful as a defensive invariant.
+    """
+    return (
+        f"{NHL_API_BASE_URL}/v1/club-schedule-season/"
+        f"{normalize_team_abbrev(team)}/{format_season_id(season)}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Team enumeration (PR-F2).
+#
+# Per ``docs/ideas/prf2-open-questions.md`` §1: option (a) — a
+# season-aware constant lookup beats run-time discovery. The PR-F2 spike
+# notes flag that the open-questions doc undercounted the relevant
+# changes — VGK (2017-18 expansion) and SEA (2021-22 expansion) also
+# fall inside the 2015-16 → present backfill window. The franchise
+# relocation ARI → UTA in 2024-25 was the only one the open-questions
+# doc enumerated.
+#
+# Pre-2015-16 changes (ATL → WPG in 2011-12, PHX → ARI in 2014-15) are
+# outside the M2 backfill window and intentionally not modeled here.
+# ---------------------------------------------------------------------------
+
+#: 30-team membership for the 2015-16 → 2016-17 seasons. Used as the
+#: base set; later season membership is computed by adding/removing
+#: from this set per the franchise events in :func:`team_abbrevs`.
+#: Note VGK / SEA / UTA are deliberately absent here — they enter the
+#: set season-conditionally below.
+_BASE_TEAM_ABBREVS_2015_2017: frozenset[str] = frozenset(
+    {
+        "ANA",
+        "ARI",
+        "BOS",
+        "BUF",
+        "CAR",
+        "CBJ",
+        "CGY",
+        "CHI",
+        "COL",
+        "DAL",
+        "DET",
+        "EDM",
+        "FLA",
+        "LAK",
+        "MIN",
+        "MTL",
+        "NJD",
+        "NSH",
+        "NYI",
+        "NYR",
+        "OTT",
+        "PHI",
+        "PIT",
+        "SJS",
+        "STL",
+        "TBL",
+        "TOR",
+        "VAN",
+        "WPG",
+        "WSH",
+    }
+)
+
+
+def team_abbrevs(season: int | str) -> frozenset[str]:
+    """Return the set of NHL team abbreviations valid for ``season``.
+
+    Computed from the ``_BASE_TEAM_ABBREVS_2015_2017`` (30-team) set
+    plus the three franchise events that fall inside the M2 backfill
+    window:
+
+    * **2017-18+**: VGK (Vegas Golden Knights, expansion).
+    * **2021-22+**: SEA (Seattle Kraken, expansion).
+    * **2024-25+**: ARI relocates to UTA (Utah Hockey Club). Drop ``ARI``,
+      add ``UTA``.
+
+    Pairs outside the resulting set will 404 against the per-team
+    endpoints — spike-confirmed for ``UTA`` pre-2024-25; ``ARI``
+    post-2024-25 is expected by symmetry but not separately probed.
+    The loader handles 404 with log-and-skip rather than relying on
+    this function as a hard gate.
+    """
+    s = format_season_id(season)
+    start_year = int(s[:4])
+    abbrevs: set[str] = set(_BASE_TEAM_ABBREVS_2015_2017)
+    if start_year >= 2017:
+        abbrevs.add("VGK")
+    if start_year >= 2021:
+        abbrevs.add("SEA")
+    if start_year >= 2024:
+        abbrevs.discard("ARI")
+        abbrevs.add("UTA")
+    return frozenset(abbrevs)

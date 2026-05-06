@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 from puckbunny.config import get_settings
 from puckbunny.http.client import RateLimitedClient
 from puckbunny.ingestion.manifest import ManifestStore
+from puckbunny.ingestion.nhl.endpoints import team_abbrevs
 from puckbunny.ingestion.nhl.games import GameLoader, GameLoadResult
 from puckbunny.ingestion.nhl.play_by_play import (
     PlayByPlayLoader,
@@ -40,6 +41,10 @@ from puckbunny.ingestion.nhl.schedule import (
 from puckbunny.ingestion.nhl.season_summaries import (
     SeasonSummariesLoader,
     SeasonSummariesLoadResult,
+)
+from puckbunny.ingestion.nhl.team_season import (
+    TeamSeasonLoader,
+    TeamSeasonLoadResult,
 )
 from puckbunny.logging_setup import configure_logging
 from puckbunny.storage.r2 import R2ObjectStorage
@@ -72,6 +77,10 @@ def main(
         [argparse.Namespace], tuple[SeasonSummariesLoader, Callable[[], None]]
     ]
     | None = None,
+    team_season_loader_factory: Callable[
+        [argparse.Namespace], tuple[TeamSeasonLoader, Callable[[], None]]
+    ]
+    | None = None,
 ) -> int:
     """CLI entry point. Returns a process exit code.
 
@@ -97,6 +106,8 @@ def main(
         return _cmd_season_summaries(
             args, season_summaries_loader_factory=season_summaries_loader_factory
         )
+    if args.command == "team-season":
+        return _cmd_team_season(args, team_season_loader_factory=team_season_loader_factory)
 
     # argparse should already have errored on an unknown command via
     # ``required=True`` on the subparsers; this is defense in depth.
@@ -209,6 +220,43 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Override the bronze partition date (YYYY-MM-DD). Defaults to today's UTC date.",
     )
     season_summaries.add_argument(
+        "--log-level",
+        default="INFO",
+        help="Logging threshold (DEBUG/INFO/WARNING/ERROR). Default INFO.",
+    )
+
+    team_season = sub.add_parser(
+        "team-season",
+        help=(
+            "Fetch roster + club-schedule-season for one (season, team) pair "
+            "(or every team in the season if --team omitted) and write to "
+            "bronze. Cadence varies by endpoint — see "
+            "docs/ideas/team-season-cadence-gating.md for the M10 design."
+        ),
+    )
+    team_season.add_argument(
+        "--season",
+        type=str,
+        required=True,
+        help=("NHL season identifier in YYYYYYYY form (e.g. '20242025' for the 2024-25 season)."),
+    )
+    team_season.add_argument(
+        "--team",
+        type=str,
+        default=None,
+        help=(
+            "3-letter team abbreviation (e.g. 'TOR'). When omitted, "
+            "iterates every team valid for --season per "
+            "endpoints.team_abbrevs(season)."
+        ),
+    )
+    team_season.add_argument(
+        "--ingest-date",
+        type=date.fromisoformat,
+        default=None,
+        help="Override the bronze partition date (YYYY-MM-DD). Defaults to today's UTC date.",
+    )
+    team_season.add_argument(
         "--log-level",
         default="INFO",
         help="Logging threshold (DEBUG/INFO/WARNING/ERROR). Default INFO.",
@@ -456,6 +504,91 @@ def _print_season_summaries_result(result: SeasonSummariesLoadResult) -> None:
             "rows": result.team_summary.rows,
             "bytes": result.team_summary.bytes,
         },
+    }
+    sys.stdout.write(json.dumps(summary) + "\n")
+    sys.stdout.flush()
+
+
+def _cmd_team_season(
+    args: argparse.Namespace,
+    *,
+    team_season_loader_factory: Callable[
+        [argparse.Namespace], tuple[TeamSeasonLoader, Callable[[], None]]
+    ]
+    | None,
+) -> int:
+    """Run :class:`TeamSeasonLoader` for one ``--team`` or every team in
+    ``--season`` if ``--team`` is omitted.
+
+    The all-teams branch is the backfill-style invocation; PR-G's
+    backfill CLI will compose this same loop with manifest gating,
+    but PR-F2 keeps the loop here so manual/debug invocations have a
+    single ergonomic entry point.
+    """
+    configure_logging(level=args.log_level)
+    factory = team_season_loader_factory or _default_team_season_loader_factory
+    loader, close = factory(args)
+    teams: tuple[str, ...] = (
+        (args.team,) if args.team is not None else tuple(sorted(team_abbrevs(args.season)))
+    )
+    results: list[TeamSeasonLoadResult] = []
+    try:
+        for team in teams:
+            results.append(loader.load_one(args.season, team, ingest_date=args.ingest_date))
+    finally:
+        close()
+    _print_team_season_results(args.season, results)
+    return 0
+
+
+def _default_team_season_loader_factory(
+    _args: argparse.Namespace,
+) -> tuple[TeamSeasonLoader, Callable[[], None]]:
+    """Wire production collaborators from environment-driven settings."""
+    settings = get_settings()
+    storage: ObjectStorage = R2ObjectStorage.from_settings(settings)
+    client = RateLimitedClient(
+        rate_per_sec=settings.ingest_rate_limit_per_sec,
+        user_agent=settings.ingest_user_agent,
+        request_timeout_seconds=settings.ingest_request_timeout_seconds,
+        max_retries=settings.ingest_max_retries,
+    )
+    loader = TeamSeasonLoader(client, storage)
+    return loader, client.close
+
+
+def _print_team_season_results(season: str, results: list[TeamSeasonLoadResult]) -> None:
+    """Emit a single-line JSON summary for the team-season subcommand.
+
+    Always renders as a list of per-team entries so the shape is the
+    same whether the caller passed ``--team`` or iterated all teams.
+    Each entry's ``roster`` and ``club_schedule_season`` slots may be
+    ``null`` to indicate a 404 log-and-skip.
+    """
+    teams_summary: list[dict[str, object]] = []
+    for r in results:
+        entry: dict[str, object] = {"team": r.team}
+        if r.roster is not None:
+            entry["roster"] = {
+                "key": r.roster.key,
+                "rows": r.roster.rows,
+                "bytes": r.roster.bytes,
+            }
+        else:
+            entry["roster"] = None
+        if r.club_schedule_season is not None:
+            entry["club_schedule_season"] = {
+                "key": r.club_schedule_season.key,
+                "rows": r.club_schedule_season.rows,
+                "bytes": r.club_schedule_season.bytes,
+            }
+        else:
+            entry["club_schedule_season"] = None
+        teams_summary.append(entry)
+
+    summary = {
+        "season": season,
+        "teams": teams_summary,
     }
     sys.stdout.write(json.dumps(summary) + "\n")
     sys.stdout.flush()
