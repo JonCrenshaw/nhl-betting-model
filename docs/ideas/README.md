@@ -20,3 +20,4 @@ Parking lot for thoughts not scoped into current work. Better to capture a half-
 - [transparency-page.md](./transparency-page.md) — Public CLV tracker as marketing moat
 - [other-sports-expansion.md](./other-sports-expansion.md) — Multi-sport expansion notes
 - [prd-pbp-keys.md](./prd-pbp-keys.md) — PR-D play-by-play key scan output (placeholder; populated in PR-D, absorbed into ADR-0003 in PR-H)
+- [efficiency-scaffolding-followups.md](./efficiency-scaffolding-followups.md) — Parked agentic-efficiency improvements; reviewed at every milestone close
