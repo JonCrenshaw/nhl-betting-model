@@ -15,11 +15,11 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Currently in flight
 
-- M2 PR-F: season-scoped loaders (planned, not started)
+- M2 PR-G: backfill CLI + manifest gating (next, not started)
 
 ## Last session summary
 
-- Initial scaffolding pass for agentic-efficiency tooling: created `docs/now.md`, `docs/gotchas.md`, `docs/efficiency.md`, `docs/ideas/efficiency-scaffolding-followups.md`, and the first batch of slash commands in `.claude/commands/` (`/start`, `/wrap`, `/new-adr`, `/leakage-check`, `/calibration-check`). Pulled cross-mount file safety and dev-container guidance out of `CLAUDE.md` into `docs/gotchas.md` and added pointers + an "Efficiency reviews" section to `CLAUDE.md`.
+- M2 PR-F2 landed and merged to `main`. `TeamSeasonLoader` covers `/v1/roster/{TEAM}/{SEASON}` and `/v1/club-schedule-season/{TEAM}/{SEASON}` on `api-web.nhle.com`; one bronze envelope per fetch with per-endpoint log-and-skip on 404 and a defensive `currentSeason` invariant. Inline first-commit probe (no separate spike PR) recorded fixtures for TOR 2024-25 + UTA 2023-24 (the 404 case). Added season-aware `team_abbrevs(season)` enumerating 30/31/32/32 across the four backfill-window eras (the open-questions doc undercounted franchise events — VGK 2017-18 and SEA 2021-22 also matter). CLI: `team-season --season SEASON [--team TEAM]`, defaulting to all teams. Renamed `_format_season_id` and `_normalize_team_abbrev` to public for cross-loader reuse. M10 cadence design parked in `docs/ideas/team-season-cadence-gating.md` (three schedules: backfill gated, weekly+trade-deadline-daily roster bypassing gating, post-schedule-release club-schedule gated). 138 tests green, ruff clean.
 
 ## Blocked
 
@@ -27,7 +27,7 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Next concrete step
 
-- Begin M2 PR-F (season-scoped loaders). See `docs/milestones/m2-nhl-ingestion.md`.
+- Begin M2 PR-G (backfill CLI + manifest gating). PR-G is the backfill side of the manifest-gating story PR-F1 and PR-F2 pre-locked in their cadence-gating docs (`docs/ideas/season-summaries-cadence-gating.md`, `docs/ideas/team-season-cadence-gating.md`). Open shape questions to call upfront in the planning response: (a) game discovery — schedule day-walks vs. per-team fan-out via club-schedule-season; (b) single `backfill` subcommand vs. per-loader subcommands; (c) cost-check methodology per Risk #4 in M2 doc; (d) resumability granularity — keep PR-E's per-game-not-per-endpoint dedupe or revisit. Branch: `feat/m2-pr-g-backfill`. After PR-G, only PR-H (ADR-0003 + warehouse doc updates) remains in M2.
 
 ---
 
