@@ -91,6 +91,70 @@ HTTP client: `httpx` (sync). Retry logic: `tenacity`. `User-Agent: PuckBunny/0.1
 
 One row per `(endpoint, scope)` successful fetch: `{run_id, endpoint, scope_key, fetched_at_utc, rows, bytes, status}`. Incremental mode reads the manifest to compute what's missing. Backfill also reads it to skip already-done work. No database yet — JSONL at this volume is fine and trivial to inspect.
 
+### D8. Game discovery for backfill
+
+**Recommendation: pure schedule day-walks via `DailyLoader.load_date(date)` for every calendar day in the season window.**
+
+Three options were considered: (1) day-walks, reusing `DailyLoader` verbatim across `season_start..season_end` for each season; (2) a date set discovered from `club-schedule-season` after running the team-season phase first; (3) step-by-7 day-walks consuming the full week response per anchor date.
+
+Day-walks win because the wall-time cost they pay is irrelevant: ~330 days × 11 seasons = ~3,600 schedule fetches at 2 req/sec ≈ 30 min, against ~5–6 hours of actual game-endpoint fetches that dominate the backfill. Empty days are no-ops in `DailyLoader` already (zero eligible games, no error). Option (2) is more elegant but couples the team-season and games phases into a strict order with shared state; option (3) introduces week-boundary edge cases (anchor day-of-week alignment, partial weeks at season ends) for an optimization that isn't load-bearing. Keeping the daily and backfill code paths identical also means PR-E's manifest-gating logic continues to be exercised by both jobs — same pattern, same failure modes.
+
+Season date range hardcoded as Sept 1 of start year through June 30 of end year per season — covers preseason through Stanley Cup Final without needing a calendar lookup. Bronze ingests preseason games if the schedule returns them, consistent with Risk #5's "bronze is source-shaped"; silver M3 decides relevance.
+
+### D9. Backfill subcommand layout
+
+**Recommendation: a single `backfill` subcommand with a `--loader {games,season-summaries,team-season,all}` selector defaulting to `all`.**
+
+```
+uv run python -m puckbunny.ingestion.nhl backfill \
+  --from-season 2015-16 --to-season 2025-26 \
+  [--loader {games,season-summaries,team-season,all}] \
+  [--cost-check {fail,warn,off}] \
+  [--ingest-date YYYY-MM-DD] [--log-level …]
+```
+
+`--from-season` / `--to-season` accept either `YYYY-YY` (e.g. `2015-16`) or `YYYYYYYY` (e.g. `20152016`) — normalized via the existing `format_season_id` helper plus a small `parse_season_range` wrapper. **For consistency**, the existing `--season` flag on `team-season` and `season-summaries` should be extended in the same PR-G commit to accept both forms — small backwards-compatible win that prevents the CLI surface from splintering between subcommands. PR-G's PR description should call this out explicitly so it's reviewable.
+
+`all` runs the loaders in this order so cheap, low-volume phases fail fast before burning hours on game-level fetches:
+
+1. **team-season** — ~340 fetches, ~3 min wall.
+2. **season-summaries** — ~33 fetches, ~30 sec wall.
+3. **games** — ~5–6 hours wall, via `DailyLoader.load_date` for each date in the window.
+
+Per-loader subcommands were considered and rejected: they multiply CLI surface for a use case (partial reruns) that's already covered by `--loader <name>`. Dispatch lives in Python, where stub-able factories exist, rather than in the shell where it would diverge from the existing test seam pattern.
+
+### D10. Cost-check methodology
+
+**Recommendation: end-of-loader-phase + end-of-overall checks against cumulative bronze size; default mode aborts above $5/mo projection.**
+
+After each loader phase and once at end-of-overall, the orchestrator computes `bytes_cumulative` (sum across all manifest entries), projects monthly storage cost as `bytes_cumulative / 1024³ × $0.015`, and emits one structured `cost_check` log line. A `--cost-check {fail,warn,off}` flag (default `fail`) controls behavior when the projection exceeds `COST_CHECK_THRESHOLD_USD = 5.00`:
+
+- `fail`: raise `CostCheckTripped` to abort before the next phase. Catches a real surprise (uncompressed dump, payload explosion, runaway loop) loud and early.
+- `warn`: log at WARNING and continue.
+- `off`: skip the check.
+
+Threshold overridable via `INGEST_COST_CHECK_THRESHOLD_USD` env var for operators who want a tighter gate. Storage-only for V1: R2 egress is zero and Class A op cost is one-time and bounded, so leaving them out keeps the arithmetic honest and matches Risk #4's framing. PR-A's measurements project ~370 MB at full backfill scale ≈ **$0.0056/mo** — three orders of magnitude inside the ceiling, so the `fail` default is a tripwire, not a brake.
+
+Module location is `src/puckbunny/ingestion/cost_check.py` (one level above `nhl/`) — sport-agnostic, since R2 cost arithmetic is the same for any future sport's bronze content.
+
+### D11. Resumability granularity
+
+**Recommendation: keep PR-E's per-scope-unit dedupe semantics and apply the same pattern to season-summaries and team-season.**
+
+For each loader, "skip if all of its endpoints' manifest entries are present for this scope_key, else call `load_one(...)` and re-fetch all":
+
+| Loader | Endpoints | scope_key | Skip if | On miss |
+|--------|-----------|-----------|---------|---------|
+| games (via `DailyLoader`) | landing, boxscore, play-by-play | `str(game_id)` | All 3 manifest entries present | Re-fetch all 3 (PR-E logic, untouched) |
+| team-season | roster, club-schedule-season | `f"{season}\|{team}"` | Both manifest entries present | Re-fetch both; on per-endpoint 404, write manifest entry only for the success |
+| season-summaries | skater-summary, goalie-summary, team-summary | `format_season_id(season)` | All 3 manifest entries present | Re-fetch all 3 |
+
+Per-endpoint dedupe was considered: it would avoid the rare partial-failure case re-fetching sibling endpoints, saving on the order of tens of fetches per backfill run. Rejected because (i) it would diverge daily and backfill behavior on the same partial-failure case (the daily walker is per-game), (ii) it would force new partial-load methods on each loader (or duplicate calls inside the orchestrator), and (iii) the absolute cost saved is in the noise. Manifest schema stays per-endpoint, so a future ADR can shift to per-endpoint dedupe without a data migration if real evidence ever motivates it.
+
+**404 log-and-skip on team-season.** When `TeamSeasonLoader.load_one` returns `None` for one or both endpoints (404 on an invalid `(season, team)` pair, e.g. `UTA` pre-2024-25), the orchestrator writes manifest entries only for the endpoints that succeeded. Subsequent runs re-attempt the 404 endpoint (one wasted fetch per invalid pair per run, bounded by `team_abbrevs`). Avoids polluting the manifest with skip-sentinels that would violate the "manifest records `ok` writes only" invariant.
+
+**Manifest-write responsibility.** `DailyLoader` already writes manifest entries internally — the games phase composes by calling `load_date(date)` and letting it handle everything. For team-season and season-summaries (intentionally cadence-agnostic per the parked `*-cadence-gating.md` docs — they don't touch the manifest), the backfill orchestrator owns gating before the call and `manifest.append_many(...)` after. Append granularity is one batch per scope unit (per `(season, team)` for team-season, per season for season-summaries) — durable to mid-loop interruption while keeping PUT count low.
+
 ---
 
 ## Architecture
@@ -196,11 +260,42 @@ Separate from game-level because rate of change is "once per season," not "once 
 - **PR-F2 — Roster + season schedule** ✅ *complete (May 2026, branch `feat/m2-pr-f2-team-season`)*
   `team_season.py` (renamed from the planned `roster.py` to follow PR-F1's "name for the scope, not for one endpoint" precedent — one loader covers both endpoints) on `api-web.nhle.com`. `TeamSeasonLoader.load_one(season, team)` hits `/v1/roster/{TEAM}/{SEASON}` and `/v1/club-schedule-season/{TEAM}/{SEASON}`, writes one envelope row per fetch, with per-endpoint log-and-skip on 404 (the spike-confirmed signal for "this `(team, season)` pair didn't exist"). One GET per `(endpoint, season, team)` with `scope_key = f"{season}|{team_abbrev}"` for the future PR-G manifest. CLI: `uv run python -m puckbunny.ingestion.nhl team-season --season SEASON [--team TEAM]`; default with `--team` omitted iterates `team_abbrevs(season)`. Defensive `currentSeason` invariant on the schedule endpoint via `ClubScheduleSeasonMismatchError`. Inline first-commit probe (no separate spike PR — surface was validated by PR-A and the unknowns were per-endpoint shape, not host); recorded fixtures committed to `tests/ingestion/fixtures/team_season/`. Findings in [`docs/ideas/prf2-spike-notes.md`](../ideas/prf2-spike-notes.md) — notably, the open-questions doc undercounted franchise events: VGK (2017-18) and SEA (2021-22) expansions also fall in the backfill window, alongside ARI→UTA (2024-25), so `team_abbrevs(season)` enumerates 30 / 31 / 32 / 32 across the four eras. M10 cadence design parked in [`docs/ideas/team-season-cadence-gating.md`](../ideas/team-season-cadence-gating.md) — three distinct schedules (backfill gated; weekly+trade-deadline-daily roster bypassing gating; post-schedule-release club-schedule gated). `format_season_id` and `normalize_team_abbrev` were renamed from their PR-F1 underscore-private form to public for cross-loader reuse.
 
-**PR-G — Backfill CLI + manifest** (~1 day)
-`uv run python -m puckbunny.ingestion.nhl backfill --from-season 2015-16 --to-season 2025-26`. Uses manifest to resume after interruption. Cost-check step at end: log bytes written and projected monthly R2 cost.
+**PR-G — Backfill CLI + manifest gating** (~1.5–2 days)
+Branch: `feat/m2-pr-g-backfill`.
+
+Decisions (D8–D11 above): pure schedule day-walks for game discovery; single `backfill` subcommand with a `--loader` selector; end-of-phase + end-of-overall cost checks with `--cost-check {fail,warn,off}` (default `fail`); per-scope-unit dedupe consistent with PR-E.
+
+Modules added:
+
+- `src/puckbunny/ingestion/nhl/backfill.py` — orchestrator. Three phase functions (`backfill_games`, `backfill_season_summaries`, `backfill_team_season`) plus a top-level `run_backfill(...)` that dispatches on `--loader`. Each phase: iterate scope units, gate via `manifest.has(...)` per the D11 table, call the loader's `load_one`, append manifest entries for successful endpoints, emit a phase-end cost-check.
+- `src/puckbunny/ingestion/cost_check.py` — sport-agnostic projection + threshold logic. Exports `CostCheckTripped`, `COST_CHECK_THRESHOLD_USD`, `compute_projection(manifest, run_id) -> CostProjection`, `evaluate(projection, mode) -> None | raises`.
+- `src/puckbunny/ingestion/nhl/endpoints.py` — small additions: `parse_season_range(from_season, to_season) -> list[str]` accepting `YYYY-YY` or `YYYYYYYY`; `dates_in_season(season) -> Iterator[date]` covering Sept 1 → June 30.
+- `src/puckbunny/ingestion/nhl/cli.py` — new `backfill` subparser + `_cmd_backfill` + `_default_backfill_factory` matching the existing factory test seam (one factory builds the four collaborator instances: `DailyLoader`, `SeasonSummariesLoader`, `TeamSeasonLoader`, `ManifestStore`, sharing one `RateLimitedClient` so the rate-limit budget is process-wide).
+
+Test surface (`tests/ingestion/`):
+
+- `test_backfill.py` — orchestrator gating logic with stubbed loaders + a fake manifest. Covers all-present skip, any-missing fetch-and-record, team-season 404 write-only-the-success, `--loader` selector, season-range filtering, batch granularity.
+- `test_cost_check.py` — projection arithmetic against synthetic manifest entries; `fail`/`warn`/`off` modes; env-var threshold override.
+- `test_backfill_resume.py` — end-to-end against `LocalFilesystemStorage` + `httpx.MockTransport` cassette set. Tiny window (1 season, 2 dates, 2 teams). Asserts initial run produces expected bronze + manifest, repeat run is a no-op, partial-manifest delete re-fetches the affected scope unit only.
+- `test_smoke_integration.py` — `@pytest.mark.integration` extension: one-season `season-summaries` backfill against the live API. Excluded from default CI.
+
+Working order: orchestrator → cost_check → CLI wiring → unit tests → resume test → CLI smoke → manual one-season live-API smoke (not committed). The orchestrator is intentionally written before the CLI so the factory test seam falls out of the existing pattern rather than being designed under CLI pressure.
+
+Out of scope for PR-G — explicitly:
+
+- M10 cadence wiring. The bypass-gating Dagster assets parked in `docs/ideas/{season-summaries,team-season}-cadence-gating.md` are M10's problem; PR-G touches only the backfill side of those docs.
+- Postponement detection (per `team-season-cadence-gating.md` "Trade-deadline override" / postponement notes). Re-arming a `club-schedule-season` manifest entry after a postponement is M10.
+- Per-endpoint dedupe. D11 keeps the per-scope-unit pattern; revisit only if real evidence shows the rare-partial-failure waste is meaningful.
+- ADR-0003. PR-H's job — D1–D11 will land in that ADR with revisit triggers.
 
 **PR-H — Docs + ADR-0003** (~0.5 day)
-ADR-0003 "NHL API surface and bronze shape" captures D1–D7 with revisit triggers. Update `docs/architecture/data-warehouse.md` if PR-A surfaced changes. Add `docs/infrastructure/r2.md` covering bucket setup. Delete `docs/ideas/pra-spike-notes.md` once its content is absorbed into ADR-0003.
+ADR-0003 "NHL API surface and bronze shape" captures **D1–D11** with revisit triggers (D8–D11 cover the PR-G backfill/cost-check/dedupe shape — make sure they're in the ADR alongside D1–D7). Update `docs/architecture/data-warehouse.md` if PR-A surfaced changes. Add `docs/infrastructure/r2.md` covering bucket setup. Delete `docs/ideas/pra-spike-notes.md` once its content is absorbed into ADR-0003.
+
+**Doc-hygiene items deferred from PR-F1/F2/G** — fold these in here so the per-PR scope stays tight:
+
+- The **M2-doc architecture diagram** (above, in this file) still lists the original PR-F2 module name `roster.py` and predates `season_summaries.py`, `team_season.py`, `backfill.py`, and `cost_check.py`. Refresh the tree to match `src/puckbunny/...` after PR-G lands.
+- The **"Endpoints in scope for M2"** subsection (in this file) is current as of PR-F0/F1 corrections but should be re-verified against the as-built loaders post-PR-G.
+- Confirm `_BASE_TEAM_ABBREVS_2015_2017` and `team_abbrevs(season)`'s franchise-event coverage (VGK/SEA/UTA) are documented in ADR-0003 since they encode an ingestion-correctness invariant that's easy to lose track of on multi-sport expansion.
 
 **Estimate.** 11 working days ≈ 4 calendar weeks at ~10 hrs/week. Roadmap originally called 2–3 weeks; **M2 is extended to 4 weeks** so PR-F (season-scoped loaders) stays in scope. Reflected in roadmap.md as a single-line update at kickoff.
 
