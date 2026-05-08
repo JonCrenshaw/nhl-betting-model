@@ -15,11 +15,12 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Currently in flight
 
-- M2 PR-G: backfill CLI + manifest gating (next, not started)
+- PR-G plan ready to commit on `docs/m2-pr-g-plan` (working tree has uncommitted edits to `docs/milestones/m2-nhl-ingestion.md`)
+- M2 PR-G implementation queued on `feat/m2-pr-g-backfill` (next, not started)
 
 ## Last session summary
 
-- M2 PR-F2 landed and merged to `main`. `TeamSeasonLoader` covers `/v1/roster/{TEAM}/{SEASON}` and `/v1/club-schedule-season/{TEAM}/{SEASON}` on `api-web.nhle.com`; one bronze envelope per fetch with per-endpoint log-and-skip on 404 and a defensive `currentSeason` invariant. Inline first-commit probe (no separate spike PR) recorded fixtures for TOR 2024-25 + UTA 2023-24 (the 404 case). Added season-aware `team_abbrevs(season)` enumerating 30/31/32/32 across the four backfill-window eras (the open-questions doc undercounted franchise events — VGK 2017-18 and SEA 2021-22 also matter). CLI: `team-season --season SEASON [--team TEAM]`, defaulting to all teams. Renamed `_format_season_id` and `_normalize_team_abbrev` to public for cross-loader reuse. M10 cadence design parked in `docs/ideas/team-season-cadence-gating.md` (three schedules: backfill gated, weekly+trade-deadline-daily roster bypassing gating, post-schedule-release club-schedule gated). 138 tests green, ruff clean.
+- PR-G plan landed in `docs/milestones/m2-nhl-ingestion.md`. Added D8–D11 in "Open decisions and proposed answers": D8 commits to schedule day-walks via `DailyLoader.load_date` for game discovery (rejecting per-team fan-out and step-by-7); D9 adopts a single `backfill` subcommand with `--loader {games,season-summaries,team-season,all}` defaulting to `all`, with a durable note that PR-G should also extend `--season` on `team-season` and `season-summaries` to accept both `YYYY-YY` and `YYYYYYYY` for CLI consistency; D10 specifies end-of-phase + end-of-overall cost checks via `--cost-check {fail,warn,off}` (default `fail`, $5/mo threshold) and a sport-agnostic `src/puckbunny/ingestion/cost_check.py` module; D11 keeps PR-E's per-scope-unit dedupe and applies it to season-summaries and team-season via a per-loader gating table, with per-endpoint 404 log-and-skip on team-season writing manifest entries only for successful endpoints. Expanded PR-G entry in "Work breakdown" — branch `feat/m2-pr-g-backfill`, modules (`backfill.py`, `cost_check.py`, helpers in `endpoints.py` + `cli.py`), test surface (`test_backfill.py`, `test_cost_check.py`, `test_backfill_resume.py`, integration extension), working order, explicit out-of-scope (M10 cadence wiring, postponement detection, per-endpoint dedupe, ADR-0003). Estimate bumped from ~1 to ~1.5–2 days. PR-H entry expanded with a doc-hygiene checklist (architecture diagram refresh, endpoint inventory re-verify, franchise-event invariants in ADR-0003) deferred from PR-F1/F2/G; PR-H ADR scope bumped from D1–D7 to D1–D11. No code changes this session.
 
 ## Blocked
 
@@ -27,7 +28,7 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Next concrete step
 
-- Begin M2 PR-G (backfill CLI + manifest gating). PR-G is the backfill side of the manifest-gating story PR-F1 and PR-F2 pre-locked in their cadence-gating docs (`docs/ideas/season-summaries-cadence-gating.md`, `docs/ideas/team-season-cadence-gating.md`). Open shape questions to call upfront in the planning response: (a) game discovery — schedule day-walks vs. per-team fan-out via club-schedule-season; (b) single `backfill` subcommand vs. per-loader subcommands; (c) cost-check methodology per Risk #4 in M2 doc; (d) resumability granularity — keep PR-E's per-game-not-per-endpoint dedupe or revisit. Branch: `feat/m2-pr-g-backfill`. After PR-G, only PR-H (ADR-0003 + warehouse doc updates) remains in M2.
+- Commit PR-G plan on `docs/m2-pr-g-plan`, then begin PR-G implementation on `feat/m2-pr-g-backfill`. Working order per the expanded plan: orchestrator (`src/puckbunny/ingestion/nhl/backfill.py`) → `src/puckbunny/ingestion/cost_check.py` → CLI wiring (new `backfill` subparser + `_cmd_backfill` + `_default_backfill_factory`) → unit tests → resume test → CLI smoke → manual one-season live-API smoke (not committed). Remember to extend `--season` on existing `team-season` / `season-summaries` subparsers per D9. After PR-G, only PR-H (ADR-0003 covering D1–D11 + the doc-hygiene checklist) remains in M2.
 
 ---
 
