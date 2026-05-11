@@ -327,8 +327,13 @@ def test_load_one_propagates_validation_error(tmp_path: Path) -> None:
 
 
 def test_load_one_rejects_malformed_season(tmp_path: Path) -> None:
-    """Season identifier must be 8 digits; non-conforming values raise
-    before any I/O.
+    """Season identifier must be 8 digits or YYYY-YY; non-conforming
+    values raise before any I/O.
+
+    Note: as of PR-G's D9 extension, ``"2024-25"`` IS accepted (and
+    normalized to ``"20242025"`` before the wire call). The malformed
+    case here is a clearly-bad value like ``"abcdefgh"`` that matches
+    no input shape.
     """
     storage = LocalFilesystemStorage(tmp_path)
     handler = _make_handler()
@@ -336,7 +341,7 @@ def test_load_one_rejects_malformed_season(tmp_path: Path) -> None:
     with _make_client(handler) as client:
         loader = SeasonSummariesLoader(client, storage)
         with pytest.raises(ValueError, match="8 digits"):
-            loader.load_one("2024-25", ingest_date=date(2026, 4, 28))
+            loader.load_one("abcdefgh", ingest_date=date(2026, 4, 28))
 
 
 # --------------------------------------------------------------------

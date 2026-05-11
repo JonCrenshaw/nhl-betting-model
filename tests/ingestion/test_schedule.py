@@ -333,6 +333,46 @@ def test_daily_load_records_three_manifest_entries_per_game(tmp_path: Path) -> N
     assert {e.scope_key for e in entries} == {str(_GAME_ID)}
 
 
+def test_daily_load_uses_supplied_run_id(tmp_path: Path) -> None:
+    """When ``run_id`` is passed (PR-G backfill orchestrator path), all
+    manifest entries written by this call carry that exact id rather
+    than a freshly-minted one. Lets a multi-phase backfill stamp every
+    entry across phases with one shared id.
+    """
+    storage = LocalFilesystemStorage(tmp_path)
+    handler = _make_full_handler()
+    supplied_run_id = "backfill-orchestrator-2026-05-08"
+    with _make_client(handler) as client:
+        loader = _build_daily_loader(client, storage)
+        result = loader.load_date(
+            _TARGET_DATE,
+            ingest_date=_INGEST_DATE,
+            run_id=supplied_run_id,
+        )
+
+    assert result.run_id == supplied_run_id
+    entries = ManifestStore(storage).read_entries()
+    assert {e.run_id for e in entries} == {supplied_run_id}
+
+
+def test_daily_load_default_run_id_is_minted_per_call(tmp_path: Path) -> None:
+    """Backwards-compat path: omitting ``run_id`` keeps PR-E behavior
+    of minting a fresh hex id per ``load_date`` invocation. Two calls
+    in a row produce different ids."""
+    storage = LocalFilesystemStorage(tmp_path)
+    handler = _make_full_handler()
+    with _make_client(handler) as client:
+        loader = _build_daily_loader(client, storage)
+        first = loader.load_date(_TARGET_DATE, ingest_date=_INGEST_DATE)
+        # Second call sees the manifest from the first and skips the
+        # game, but still mints its own run_id for the result object.
+        second = loader.load_date(_TARGET_DATE, ingest_date=_INGEST_DATE)
+    assert first.run_id != second.run_id
+    # And neither one is empty / None — sanity check on the default
+    # path's behavior.
+    assert first.run_id and second.run_id
+
+
 # --------------------------------------------------------------------
 # DailyLoader.load_date — idempotency via manifest
 # --------------------------------------------------------------------

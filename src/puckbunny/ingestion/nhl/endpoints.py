@@ -20,7 +20,11 @@ produced a row. Concrete URLs come from the matching ``*_url`` helper.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 #: Base URL of the modern, web-facing NHL API. No trailing slash.
 NHL_API_BASE_URL: str = "https://api-web.nhle.com"
@@ -126,15 +130,112 @@ STATS_REST_LIMIT_ALL: int = -1
 def format_season_id(season: int | str) -> str:
     """Normalize a season identifier to the 8-char ``YYYYYYYY`` form.
 
-    Accepts ``int`` (``20242025``) or ``str`` (``"20242025"``). The
-    stats-rest ``cayenneExp=seasonId=...`` query parameter takes the
-    digit string; the caller's choice between int and str is just
-    ergonomics — both forms are valid in the codebase.
+    Accepts three input shapes:
+
+    * ``int`` (``20242025``) — ergonomics for code that holds the
+      season as a number.
+    * ``str`` 8-digit (``"20242025"``) — the canonical form that goes
+      on the wire as ``cayenneExp=seasonId=...``.
+    * ``str`` ``YYYY-YY`` (``"2024-25"``) — the human-readable form
+      used in CLI flags and docs. The two-digit suffix must equal
+      ``(start_year + 1) % 100``; mismatched suffixes raise rather than
+      silently re-normalize, so a typo like ``"2024-26"`` doesn't
+      become ``"20242025"`` by accident.
+
+    Per D9 in ``docs/milestones/m2-nhl-ingestion.md``, accepting both
+    the 8-digit and ``YYYY-YY`` forms here is the load-bearing change
+    that lets ``--season``, ``--from-season``, and ``--to-season`` all
+    take either form across every CLI subcommand without per-call-site
+    branching.
     """
-    s = str(season)
+    if isinstance(season, int):
+        s = str(season)
+    else:
+        s = season.strip()
+        if len(s) == 7 and s[4] == "-" and s[:4].isdigit() and s[5:].isdigit():
+            start_year = int(s[:4])
+            suffix = int(s[5:])
+            expected_suffix = (start_year + 1) % 100
+            if suffix != expected_suffix:
+                raise ValueError(
+                    f"season {season!r} has a non-consecutive suffix; "
+                    f"expected '{start_year}-{expected_suffix:02d}'"
+                )
+            return f"{start_year}{start_year + 1}"
     if len(s) != 8 or not s.isdigit():
-        raise ValueError(f"season must be 8 digits like '20242025', got {season!r}")
+        raise ValueError(
+            f"season must be 8 digits like '20242025' or 'YYYY-YY' like '2024-25', got {season!r}"
+        )
+    # 8-digit form: defensively confirm the two halves are consecutive
+    # years so a malformed string like ``"20241999"`` fails here rather
+    # than constructing a bogus URL. The original strict version didn't
+    # do this; the YYYY-YY branch already enforces it, so symmetry is
+    # cheap and keeps both forms equally trustworthy downstream.
+    start_year = int(s[:4])
+    end_year = int(s[4:])
+    if end_year != start_year + 1:
+        raise ValueError(
+            f"season {season!r} has non-consecutive years; expected '{start_year}{start_year + 1}'"
+        )
     return s
+
+
+def parse_season_range(from_season: int | str, to_season: int | str) -> list[str]:
+    """Return the inclusive list of 8-digit season ids between
+    ``from_season`` and ``to_season``.
+
+    Both arguments accept any input shape :func:`format_season_id`
+    accepts (int, 8-digit string, or ``YYYY-YY`` string). Returns
+    seasons in chronological order, e.g. ``parse_season_range("2015-16",
+    "2017-18")`` → ``["20152016", "20162017", "20172018"]``.
+
+    Raises :class:`ValueError` if ``to_season`` is earlier than
+    ``from_season`` — the backfill CLI's contract is "from earliest to
+    latest"; reversing them is almost always a typo.
+    """
+    start = format_season_id(from_season)
+    end = format_season_id(to_season)
+    start_year = int(start[:4])
+    end_year = int(end[:4])
+    if end_year < start_year:
+        raise ValueError(
+            f"to_season {to_season!r} is earlier than from_season "
+            f"{from_season!r}; the range is interpreted "
+            f"earliest→latest and cannot be reversed"
+        )
+    return [f"{y}{y + 1}" for y in range(start_year, end_year + 1)]
+
+
+def dates_in_season(season: int | str) -> Iterator[date]:
+    """Yield every calendar date in the NHL season window for ``season``.
+
+    Window is **Sept 1 of the start year through June 30 of the end
+    year**, inclusive on both ends — wide enough to cover preseason
+    (mid- to late-September) through the Stanley Cup Final (typically
+    early- to mid-June) without needing a per-season calendar lookup.
+
+    Used by PR-G's backfill orchestrator to drive ``DailyLoader``-based
+    game discovery via pure schedule day-walks (D8). The walker is
+    expected to handle empty days as no-ops; this helper deliberately
+    does not pre-filter on "are there games on this date" — that
+    coupling would force a discovery pass and trade the simplicity of
+    day-walks for an optimization that isn't load-bearing (see D8 in
+    the M2 plan).
+
+    The yielded dates are in chronological order. ~303 dates per
+    season; a 2015-16 → 2025-26 backfill walks ~3,330 dates, which at
+    2 req/sec is ~28 minutes of schedule fetches against a backfill
+    whose game-level fetches dominate the wall time anyway.
+    """
+    season_str = format_season_id(season)
+    start_year = int(season_str[:4])
+    end_year = int(season_str[4:])
+    current = date(start_year, 9, 1)
+    end = date(end_year, 6, 30)
+    one_day = timedelta(days=1)
+    while current <= end:
+        yield current
+        current = current + one_day
 
 
 def skater_summary_url(season: int | str) -> str:

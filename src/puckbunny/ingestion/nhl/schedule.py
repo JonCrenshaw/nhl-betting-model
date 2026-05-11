@@ -211,6 +211,7 @@ class DailyLoader:
         target_date: date,
         *,
         ingest_date: date | None = None,
+        run_id: str | None = None,
     ) -> DailyLoadResult:
         """Fetch schedule, ingest every eligible game, return a summary.
 
@@ -218,12 +219,21 @@ class DailyLoader:
             target_date: The NHL ``gameDate`` to ingest.
             ingest_date: Bronze partition key override. Defaults to the
                 UTC date at call time, matching the gamecenter loaders.
+            run_id: Optional override for the run identifier stamped on
+                every manifest entry written by this call. When omitted
+                a fresh id is minted via :func:`new_run_id` — the
+                production daily-CLI path. PR-G's backfill orchestrator
+                passes its own id so every manifest entry written
+                across the whole multi-phase backfill (games +
+                team-season + season-summaries) shares one ``run_id``,
+                making "show me what this backfill wrote" a single
+                grep against the JSONL.
 
         Returns:
             :class:`DailyLoadResult` with per-game outcomes.
         """
         ingest_date = ingest_date or datetime.now(UTC).date()
-        run_id = new_run_id()
+        run_id = run_id or new_run_id()
         log = self._log.bind(
             target_date=target_date.isoformat(),
             ingest_date=ingest_date.isoformat(),

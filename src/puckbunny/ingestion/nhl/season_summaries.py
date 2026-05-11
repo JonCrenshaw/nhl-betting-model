@@ -68,6 +68,7 @@ from puckbunny.ingestion.nhl.endpoints import (
     GOALIE_SUMMARY_ENDPOINT_TEMPLATE,
     SKATER_SUMMARY_ENDPOINT_TEMPLATE,
     TEAM_SUMMARY_ENDPOINT_TEMPLATE,
+    format_season_id,
     goalie_summary_url,
     season_start_date,
     season_summary_query_params,
@@ -168,9 +169,13 @@ class SeasonSummariesLoader:
             ValueError: ``season`` is not an 8-digit string/int.
         """
         ingest_date = ingest_date or datetime.now(UTC).date()
-        # Normalize early — also validates the format and raises with a
-        # helpful message before any I/O.
-        season_str = str(season)
+        # Normalize early — accepts ``int``, ``"20242025"``, or
+        # ``"2024-25"`` per :func:`format_season_id` and raises
+        # before any I/O on a malformed value. The 8-digit canonical
+        # form is what lands in the bronze ``season`` column so cross-
+        # loader joins line up regardless of which input form the CLI
+        # caller used.
+        season_str = format_season_id(season)
         log = self._log.bind(season=season_str, ingest_date=ingest_date.isoformat())
         log.info("nhl_season_summaries_load_start")
 

@@ -26,7 +26,13 @@ from typing import TYPE_CHECKING
 from puckbunny.config import get_settings
 from puckbunny.http.client import RateLimitedClient
 from puckbunny.ingestion.manifest import ManifestStore
-from puckbunny.ingestion.nhl.endpoints import team_abbrevs
+from puckbunny.ingestion.nhl.backfill import (
+    SUPPORTED_LOADERS,
+    BackfillCollaborators,
+    BackfillResult,
+    run_backfill,
+)
+from puckbunny.ingestion.nhl.endpoints import parse_season_range, team_abbrevs
 from puckbunny.ingestion.nhl.games import GameLoader, GameLoadResult
 from puckbunny.ingestion.nhl.play_by_play import (
     PlayByPlayLoader,
@@ -81,17 +87,29 @@ def main(
         [argparse.Namespace], tuple[TeamSeasonLoader, Callable[[], None]]
     ]
     | None = None,
+    backfill_factory: Callable[
+        [argparse.Namespace], tuple[BackfillCollaborators, Callable[[], None]]
+    ]
+    | None = None,
 ) -> int:
     """CLI entry point. Returns a process exit code.
 
     ``loader_factory``, ``pbp_loader_factory``,
-    ``daily_loader_factory``, and ``season_summaries_loader_factory``
-    are the test seams: production callers leave them unset (the
-    defaults build R2-backed loaders from :mod:`puckbunny.config`);
-    tests inject factories that wire the loader to a local-filesystem
-    storage + a mock HTTP transport. The factories are kept separate
-    because the loaders produce different result shapes; collapsing
+    ``daily_loader_factory``, ``season_summaries_loader_factory``,
+    ``team_season_loader_factory``, and ``backfill_factory`` are the
+    test seams: production callers leave them unset (the defaults
+    build R2-backed loaders from :mod:`puckbunny.config`); tests inject
+    factories that wire the loaders to a local-filesystem storage + a
+    mock HTTP transport. The factories are kept separate per-subcommand
+    because each loader produces a different result shape; collapsing
     them into one would add stringly-typed branching for no real win.
+
+    The ``backfill`` subcommand is the exception — it always wires all
+    four collaborators (DailyLoader + SeasonSummariesLoader +
+    TeamSeasonLoader + ManifestStore) and the
+    :class:`BackfillCollaborators` struct holds them as one bundle, so
+    the backfill factory returns one struct rather than four
+    separately-injectable loaders. Per Q3 of the PR-G planning recap.
     """
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -108,6 +126,8 @@ def main(
         )
     if args.command == "team-season":
         return _cmd_team_season(args, team_season_loader_factory=team_season_loader_factory)
+    if args.command == "backfill":
+        return _cmd_backfill(args, backfill_factory=backfill_factory)
 
     # argparse should already have errored on an unknown command via
     # ``required=True`` on the subparsers; this is defense in depth.
@@ -207,10 +227,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=str,
         required=True,
         help=(
-            "NHL season identifier in YYYYYYYY form (e.g. '20242025' for "
-            "the 2024-25 season). Accepts string only — the leading-zero "
-            "concern doesn't apply to seasons but ``str`` keeps the CLI "
-            "shape predictable across shells."
+            "NHL season identifier. Accepts either YYYYYYYY (e.g. "
+            "'20242025') or YYYY-YY (e.g. '2024-25') — both are "
+            "normalized to the 8-digit form before the wire call. "
+            "Accepts string only; the leading-zero concern doesn't "
+            "apply to seasons but ``str`` keeps the CLI shape "
+            "predictable across shells."
         ),
     )
     season_summaries.add_argument(
@@ -238,7 +260,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--season",
         type=str,
         required=True,
-        help=("NHL season identifier in YYYYYYYY form (e.g. '20242025' for the 2024-25 season)."),
+        help=(
+            "NHL season identifier. Accepts either YYYYYYYY (e.g. "
+            "'20242025') or YYYY-YY (e.g. '2024-25')."
+        ),
     )
     team_season.add_argument(
         "--team",
@@ -257,6 +282,72 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Override the bronze partition date (YYYY-MM-DD). Defaults to today's UTC date.",
     )
     team_season.add_argument(
+        "--log-level",
+        default="INFO",
+        help="Logging threshold (DEBUG/INFO/WARNING/ERROR). Default INFO.",
+    )
+
+    backfill = sub.add_parser(
+        "backfill",
+        help=(
+            "Backfill historical NHL bronze data across a season range. "
+            "Composes the team-season + season-summaries + games loaders "
+            "with manifest-based per-scope-unit dedupe and an end-of-phase "
+            "cost-check tripwire. See docs/milestones/m2-nhl-ingestion.md "
+            "PR-G for the design."
+        ),
+    )
+    backfill.add_argument(
+        "--from-season",
+        type=str,
+        required=True,
+        help=(
+            "First season in the backfill range (inclusive). Accepts "
+            "either YYYYYYYY (e.g. '20152016') or YYYY-YY (e.g. "
+            "'2015-16')."
+        ),
+    )
+    backfill.add_argument(
+        "--to-season",
+        type=str,
+        required=True,
+        help=(
+            "Last season in the backfill range (inclusive). Same input "
+            "shapes as --from-season. Must be >= --from-season."
+        ),
+    )
+    backfill.add_argument(
+        "--loader",
+        type=str,
+        default="all",
+        choices=SUPPORTED_LOADERS,
+        help=(
+            "Which loader phase(s) to run. 'all' (default) runs "
+            "team-season → season-summaries → games in cheap-fail-fast "
+            "order. Single-phase values run only that phase."
+        ),
+    )
+    backfill.add_argument(
+        "--cost-check",
+        type=str,
+        default="fail",
+        choices=("fail", "warn", "off"),
+        help=(
+            "Behavior when the end-of-phase cost projection exceeds the "
+            "active threshold (default $5/mo, override via "
+            "INGEST_COST_CHECK_THRESHOLD_USD). 'fail' (default) raises "
+            "to abort before the next phase; 'warn' logs at WARNING and "
+            "continues; 'off' skips the threshold action (the "
+            "projection is still logged)."
+        ),
+    )
+    backfill.add_argument(
+        "--ingest-date",
+        type=date.fromisoformat,
+        default=None,
+        help="Override the bronze partition date (YYYY-MM-DD). Defaults to today's UTC date.",
+    )
+    backfill.add_argument(
         "--log-level",
         default="INFO",
         help="Logging threshold (DEBUG/INFO/WARNING/ERROR). Default INFO.",
@@ -590,5 +681,114 @@ def _print_team_season_results(season: str, results: list[TeamSeasonLoadResult])
         "season": season,
         "teams": teams_summary,
     }
+    sys.stdout.write(json.dumps(summary) + "\n")
+    sys.stdout.flush()
+
+
+def _cmd_backfill(
+    args: argparse.Namespace,
+    *,
+    backfill_factory: Callable[
+        [argparse.Namespace], tuple[BackfillCollaborators, Callable[[], None]]
+    ]
+    | None,
+) -> int:
+    """Run the historical backfill across ``--from-season`` /
+    ``--to-season`` for the requested ``--loader`` phase(s).
+
+    The CLI normalizes the season range here so the orchestrator only
+    sees canonical 8-digit ids; bad inputs fail at parse time, before
+    any factory-side I/O. Returns ``2`` if the cost-check tripped (per
+    Unix convention "non-zero, non-1 = special error"), ``0`` otherwise
+    — letting wrapper scripts distinguish "ran clean" from "stopped on
+    a budget tripwire" without parsing stdout.
+    """
+    configure_logging(level=args.log_level)
+    seasons = parse_season_range(args.from_season, args.to_season)
+    factory = backfill_factory or _default_backfill_factory
+    collaborators, close = factory(args)
+    try:
+        result = run_backfill(
+            collaborators,
+            seasons=seasons,
+            loader=args.loader,
+            cost_check_mode=args.cost_check,
+            ingest_date=args.ingest_date,
+        )
+    finally:
+        close()
+    _print_backfill_result(result)
+    return 2 if result.aborted else 0
+
+
+def _default_backfill_factory(
+    _args: argparse.Namespace,
+) -> tuple[BackfillCollaborators, Callable[[], None]]:
+    """Wire production collaborators: R2 + one shared rate-limited
+    client + manifest, with all four loaders constructed against them.
+
+    One client across all four loaders so the rate-limit budget is
+    process-wide (per D6) — a backfill run never exceeds the configured
+    requests-per-second across phases. The returned ``close`` callable
+    closes that one client.
+    """
+    settings = get_settings()
+    storage: ObjectStorage = R2ObjectStorage.from_settings(settings)
+    client = RateLimitedClient(
+        rate_per_sec=settings.ingest_rate_limit_per_sec,
+        user_agent=settings.ingest_user_agent,
+        request_timeout_seconds=settings.ingest_request_timeout_seconds,
+        max_retries=settings.ingest_max_retries,
+    )
+    schedule_loader = ScheduleLoader(client)
+    game_loader = GameLoader(client, storage)
+    pbp_loader = PlayByPlayLoader(client, storage)
+    manifest = ManifestStore(storage)
+    daily_loader = DailyLoader(
+        schedule_loader=schedule_loader,
+        game_loader=game_loader,
+        pbp_loader=pbp_loader,
+        manifest=manifest,
+    )
+    season_summaries_loader = SeasonSummariesLoader(client, storage)
+    team_season_loader = TeamSeasonLoader(client, storage)
+    collaborators = BackfillCollaborators(
+        daily_loader=daily_loader,
+        season_summaries_loader=season_summaries_loader,
+        team_season_loader=team_season_loader,
+        manifest=manifest,
+    )
+    return collaborators, client.close
+
+
+def _print_backfill_result(result: BackfillResult) -> None:
+    """Emit a single-line JSON summary for the ``backfill`` subcommand.
+
+    Per-phase counts make the run auditable at a glance; the manifest
+    is the source of truth for what landed where, but operators
+    typically want "did the run abort, and roughly how much did each
+    phase do" before drilling into the JSONL.
+    """
+    phases_summary: list[dict[str, object]] = [
+        {
+            "phase": p.phase,
+            "scope_units_attempted": p.scope_units_attempted,
+            "scope_units_skipped": p.scope_units_skipped,
+            "scope_units_loaded": p.scope_units_loaded,
+            "manifest_entries_appended": p.manifest_entries_appended,
+        }
+        for p in result.phase_results
+    ]
+    summary: dict[str, object] = {
+        "run_id": result.run_id,
+        "loader": result.loader,
+        "cost_check_mode": result.cost_check_mode,
+        "ingest_date": result.ingest_date.isoformat(),
+        "seasons": result.seasons,
+        "phases": phases_summary,
+        "aborted": result.aborted,
+    }
+    if result.aborted:
+        summary["aborted_reason"] = result.aborted_reason
     sys.stdout.write(json.dumps(summary) + "\n")
     sys.stdout.flush()
