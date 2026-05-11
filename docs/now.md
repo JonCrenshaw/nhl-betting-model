@@ -10,16 +10,16 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Active branch / PR
 
-- Branch: `main`
+- Branch: `feat/m2-pr-g-backfill` (uncommitted; Jon to commit via GitHub Desktop)
 - Open PR: none
 
 ## Currently in flight
 
-- M2 PR-G: backfill CLI + manifest gating (next, not started)
+- M2 PR-G: backfill CLI + manifest gating (implementation complete, awaiting Jon to run pytest on Windows + open PR)
 
 ## Last session summary
 
-- M2 PR-F2 landed and merged to `main`. `TeamSeasonLoader` covers `/v1/roster/{TEAM}/{SEASON}` and `/v1/club-schedule-season/{TEAM}/{SEASON}` on `api-web.nhle.com`; one bronze envelope per fetch with per-endpoint log-and-skip on 404 and a defensive `currentSeason` invariant. Inline first-commit probe (no separate spike PR) recorded fixtures for TOR 2024-25 + UTA 2023-24 (the 404 case). Added season-aware `team_abbrevs(season)` enumerating 30/31/32/32 across the four backfill-window eras (the open-questions doc undercounted franchise events — VGK 2017-18 and SEA 2021-22 also matter). CLI: `team-season --season SEASON [--team TEAM]`, defaulting to all teams. Renamed `_format_season_id` and `_normalize_team_abbrev` to public for cross-loader reuse. M10 cadence design parked in `docs/ideas/team-season-cadence-gating.md` (three schedules: backfill gated, weekly+trade-deadline-daily roster bypassing gating, post-schedule-release club-schedule gated). 138 tests green, ruff clean.
+- M2 PR-G implementation complete on local working tree. Three planning Qs resolved upfront: (Q1) thread one `run_id` through every phase including `DailyLoader.load_date` via a new optional kwarg; (Q2) drop the separate end-of-overall cost-check pass — the last phase's check is the end-of-overall; (Q3) single `backfill_factory` test seam returning a `BackfillCollaborators` struct. Plus an unblocked D9 follow-through: extended `format_season_id` to accept `YYYY-YY` alongside the 8-digit form (with consecutive-year validation in both branches), so `--season`, `--from-season`, `--to-season` all take both shapes across every subcommand. Also fixed `SeasonSummariesLoader.load_one`'s `str(season)` → `format_season_id(season)` so the bronze envelope's `season` column lands canonical regardless of CLI input shape. Added `src/puckbunny/ingestion/cost_check.py` (sport-agnostic; `compute_projection` + `evaluate` with `{fail,warn,off}` modes, env-overridable `INGEST_COST_CHECK_THRESHOLD_USD` defaulting to $5/mo, `R2_STORAGE_USD_PER_GB_MONTH=0.015`) and `src/puckbunny/ingestion/nhl/backfill.py` (phase functions + `run_backfill` dispatcher, `BackfillCollaborators` frozen dataclass, end-of-phase cost-check, phase order team-season → season-summaries → games when `--loader=all`). CLI: `backfill --from-season SEASON --to-season SEASON [--loader {games,season-summaries,team-season,all}] [--cost-check {fail,warn,off}] [--ingest-date YYYY-MM-DD]`; cost-check trip returns exit code 2. New tests: `test_nhl_endpoints.py` (format_season_id + parse_season_range + dates_in_season), `test_cost_check.py`, `test_backfill.py` (orchestrator + CLI), `test_backfill_resume.py` (real-loader resume scenarios), `test_smoke_integration.py` (live-API marker). `ruff check` + `ruff format` clean; `py_compile` clean. Pytest not yet run — Jon to verify on Windows.
 
 ## Blocked
 
@@ -27,7 +27,7 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Next concrete step
 
-- Begin M2 PR-G (backfill CLI + manifest gating). PR-G is the backfill side of the manifest-gating story PR-F1 and PR-F2 pre-locked in their cadence-gating docs (`docs/ideas/season-summaries-cadence-gating.md`, `docs/ideas/team-season-cadence-gating.md`). Open shape questions to call upfront in the planning response: (a) game discovery — schedule day-walks vs. per-team fan-out via club-schedule-season; (b) single `backfill` subcommand vs. per-loader subcommands; (c) cost-check methodology per Risk #4 in M2 doc; (d) resumability granularity — keep PR-E's per-game-not-per-endpoint dedupe or revisit. Branch: `feat/m2-pr-g-backfill`. After PR-G, only PR-H (ADR-0003 + warehouse doc updates) remains in M2.
+- Jon runs the full pytest suite on Windows (`uv run pytest`) to confirm green, then opens PR-G against `main`. Suggested PR title: `feat(ingestion): backfill orchestrator + cost-check tripwire (M2 PR-G)`. PR description should explicitly call out the `format_season_id` `YYYY-YY` extension as a cross-subcommand behavior change (per D9), and note that the cost-check default of $5/mo is a tripwire (~3 orders of magnitude inside the M2 plan's $50/mo ceiling) not a brake. After PR-G merges, only PR-H (ADR-0003 capturing D1–D11 + warehouse doc refresh) remains in M2.
 
 ---
 
