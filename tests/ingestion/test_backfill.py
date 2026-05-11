@@ -176,6 +176,41 @@ class StubTeamSeasonLoader:
         )
 
 
+def _extract_json_summary(captured: str) -> dict[str, object]:
+    """Return the parsed JSON summary line from ``capsys`` stdout.
+
+    Two complications drive this helper's shape:
+
+    1. structlog log output and the CLI's JSON summary both go to
+       stdout. When stderr isn't a TTY (pytest's default), structlog
+       uses :class:`structlog.processors.JSONRenderer`, so log lines
+       are themselves JSON objects and ``json.loads`` would happily
+       parse them — masking the real CLI summary.
+    2. ``configure_logging`` is idempotent (``_CONFIGURED`` flag, first
+       call wins), so test ordering can leave INFO logs interleaved
+       with the summary line.
+
+    Strategy: scan from the **end** (the CLI summary is the last thing
+    written before return), and require the parsed object to contain
+    the ``"loader"`` key — present on every backfill summary, never on
+    a structlog log record. Both conditions together uniquely identify
+    the summary line.
+    """
+    import json as _json
+
+    for line in reversed(captured.splitlines()):
+        stripped = line.strip()
+        if not stripped.startswith("{"):
+            continue
+        try:
+            parsed = _json.loads(stripped)
+        except _json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict) and "loader" in parsed:
+            return parsed
+    raise AssertionError(f"no JSON summary line found in captured stdout:\n{captured!r}")
+
+
 def _make_collaborators(
     tmp_path: Path,
     *,
@@ -670,10 +705,7 @@ def test_cli_backfill_subcommand_runs_full_pipeline(
     )
     assert exit_code == 0
 
-    import json as _json
-
-    out = capsys.readouterr().out.strip()
-    summary = _json.loads(out)
+    summary = _extract_json_summary(capsys.readouterr().out)
     assert summary["loader"] == "season-summaries"
     assert summary["cost_check_mode"] == "off"
     assert summary["ingest_date"] == "2026-05-08"
@@ -723,10 +755,7 @@ def test_cli_backfill_subcommand_normalizes_yyyy_yy_input(
     )
     assert exit_code == 0
 
-    import json as _json
-
-    out = capsys.readouterr().out.strip()
-    summary = _json.loads(out)
+    summary = _extract_json_summary(capsys.readouterr().out)
     assert summary["seasons"] == ["20232024", "20242025"]
 
 
@@ -771,10 +800,7 @@ def test_cli_backfill_subcommand_returns_2_on_cost_check_trip(
     )
     assert exit_code == 2
 
-    import json as _json
-
-    out = capsys.readouterr().out.strip()
-    summary = _json.loads(out)
+    summary = _extract_json_summary(capsys.readouterr().out)
     assert summary["aborted"] is True
     assert "tripped" in summary["aborted_reason"]
 

@@ -27,7 +27,7 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Next concrete step
 
-- Jon runs the full pytest suite on Windows (`uv run pytest`) to confirm green, then opens PR-G against `main`. Suggested PR title: `feat(ingestion): backfill orchestrator + cost-check tripwire (M2 PR-G)`. PR description should explicitly call out the `format_season_id` `YYYY-YY` extension as a cross-subcommand behavior change (per D9), and note that the cost-check default of $5/mo is a tripwire (~3 orders of magnitude inside the M2 plan's $50/mo ceiling) not a brake. After PR-G merges, only PR-H (ADR-0003 capturing D1–D11 + warehouse doc refresh) remains in M2.
+- Jon re-runs `uv run pytest` on Windows to confirm the 5 fixed failures now pass (CLI JSON-line extraction, tripped-projection for the unknown-mode branch, "abcdefgh" replacing "2024-25" in two pre-existing malformed-season tests since YYYY-YY is now valid). Once green, open PR-G against `main`. Suggested PR title: `feat(ingestion): backfill orchestrator + cost-check tripwire (M2 PR-G)`. PR description should explicitly call out the `format_season_id` `YYYY-YY` extension as a cross-subcommand behavior change (per D9), and note that the cost-check default of $5/mo is a tripwire (~3 orders of magnitude inside the M2 plan's $50/mo ceiling) not a brake. After PR-G merges, only PR-H (ADR-0003 capturing D1–D11 + warehouse doc refresh) remains in M2.
 
 ---
 

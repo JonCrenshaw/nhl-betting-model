@@ -267,6 +267,9 @@ def test_evaluate_off_untripped_returns() -> None:
 
 def test_evaluate_unknown_mode_raises_value_error() -> None:
     """Defense in depth — argparse should reject anything else, but if
-    a caller bypasses the CLI we still want a clear failure."""
+    a caller bypasses the CLI we still want a clear failure. The
+    unknown-mode branch is only reachable on a *tripped* projection
+    (untripped projections short-circuit on the first INFO log), so
+    pass the tripped one here."""
     with pytest.raises(ValueError, match="unknown cost-check mode"):
-        evaluate(_untripped_projection(), "explode")  # type: ignore[arg-type]
+        evaluate(_tripped_projection(), "explode")  # type: ignore[arg-type]
