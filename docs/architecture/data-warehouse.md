@@ -1,7 +1,9 @@
 # Data Warehouse Architecture
 
-Status: **Draft v1**. Supersedes nothing. Not yet implemented.
-Decision record: [ADR-0001](../decisions/0001-warehouse-stack.md)
+Status: **Draft v1**. Bronze layer implemented as of M2 (May 2026); silver and gold not yet built.
+Decision records:
+- [ADR-0001](../decisions/0001-warehouse-stack.md) — warehouse stack (R2 + DuckDB/MotherDuck + dbt).
+- [ADR-0003](../decisions/0003-nhl-api-surface-and-bronze-shape.md) — NHL ingestion-layer decisions backing the bronze shape below (D1–D11).
 
 ---
 
@@ -76,18 +78,19 @@ r2://puckbunny-lake/
 │   │   ├── landing/ingest_date=2026-04-25/{uuid}.parquet
 │   │   ├── boxscore/ingest_date=2026-04-25/{uuid}.parquet
 │   │   ├── play-by-play/ingest_date=2026-04-25/{uuid}.parquet
-│   │   ├── skater_summary/ingest_date=.../    # M2 PR-F
-│   │   ├── goalie_summary/ingest_date=.../    # M2 PR-F
-│   │   ├── team_summary/ingest_date=.../      # M2 PR-F
-│   │   └── roster/ingest_date=.../            # M2 PR-F
+│   │   ├── skater-summary/ingest_date=.../          # M2 PR-F1
+│   │   ├── goalie-summary/ingest_date=.../          # M2 PR-F1
+│   │   ├── team-summary/ingest_date=.../            # M2 PR-F1
+│   │   ├── roster/ingest_date=.../                  # M2 PR-F2
+│   │   └── club-schedule-season/ingest_date=.../    # M2 PR-F2
 │   ├── odds_api/
-│   │   └── h2h_totals_spreads/ingest_date=.../
-│   ├── moneypuck/
-│   ├── lineups/
+│   │   └── h2h_totals_spreads/ingest_date=.../      # M4
+│   ├── moneypuck/                                   # M4 / M5
+│   ├── lineups/                                     # M5
 │   └── _manifests/
 │       └── ingest_runs.jsonl   # append-only ingest log; see below
 └── historical/
-    └── odds_archive/      # one-time purchased dataset
+    └── odds_archive/      # one-time purchased dataset (M4)
 ```
 
 The endpoint partition names match the URL slug exactly (e.g. `play-by-play/`, hyphenated, mirrors `/v1/gamecenter/{gameId}/play-by-play`) so a path is greppable against the source URL when debugging. File names are uuid hex so re-runs of the same `ingest_date` don't collide. The endpoint URL template is also recorded inside every row's typed envelope (`endpoint` column), giving two cross-checking views of provenance.
