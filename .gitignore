@@ -40,8 +40,7 @@ dbt/target/
 dbt/dbt_packages/
 dbt/logs/
 dbt/.user.yml
-dbt/profiles.yml          # contains connection secrets; use profiles.yml.example
-
+dbt/profiles.yml
 # ---------- Secrets / credentials ----------
 .env
 .env.*
@@ -87,6 +86,8 @@ $RECYCLE.BIN/
 # ---------- Claude Code ----------
 .claude/local/
 .claude/sessions/
+.claude/worktrees/
+logs/
 
 # ---------- Frontend (V2) ----------
 node_modules/
