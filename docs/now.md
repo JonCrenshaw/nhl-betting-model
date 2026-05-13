@@ -10,24 +10,24 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Active branch / PR
 
-- Branch: none (on `main`). M2 is closed — PR #36 (`feat/m2-pr-h-adr-0003`) merged May 2026.
-- Open PR: none.
+- Branch: `claude/ecstatic-tu-f78712` (rename to `feat/m3-pr-a-infra` at commit time). M2 closed May 2026.
+- Open PR: none yet — PR-A ready to commit.
 
 ## Currently in flight
 
-- M3 kickoff. Plan at `docs/milestones/m3-silver-layer.md`. MotherDuck provisioning is the blocker before PR-A.
+- M3 PR-A. All deliverables built and locally verified: `docs/infrastructure/motherduck.md` runbook, `dbt/models/core/README.md`, `dbt/seeds/dim_sport.csv` + `dim_league.csv` + `schema.yml`, `.env.example` updated. `dbt debug --target prod` against MotherDuck and `dbt seed && dbt test --select dim_sport dim_league` against dev DuckDB both green.
 
 ## Last session summary
 
-- M2 milestone-close efficiency review + M3 plan review. Efficiency review: updated stale docs (`now.md`, `roadmap.md`, `m2-nhl-ingestion.md`), promoted `/efficiency-review` slash command. M3 plan review: revised exit criteria (drop `market`/`odds` → M4; add `fct_game_event` + `fct_game_lineup`; estimate 3 weeks), added `models/core/` dbt layer to `dbt_project.yml`, flipped ADR-0001 to Accepted, scaffolded `docs/milestones/m3-silver-layer.md`.
+- M3 PR-A built. MotherDuck provisioned (database `puckbunny`, region us-west-2). Initial token leaked into untracked `docs/infrastructure/motherduck.md` was rotated; new token in `.env`. Wrote proper motherduck.md runbook (mirrors r2.md), created `dbt/models/core/` scaffold, created `dim_sport` + `dim_league` seeds with YAML descriptions and unique/not_null/relationships tests. All 12 dbt tests pass locally.
 
 ## Blocked
 
-- M3 PR-A is blocked on MotherDuck provisioning (Jon). ~15 min setup + smoke test. Steps will be captured in `docs/infrastructure/motherduck.md` as part of PR-A.
+- None. Ready to commit PR-A and open the GitHub PR.
 
 ## Next concrete step
 
-- Jon: provision MotherDuck (account setup → create `puckbunny` database → capture `MOTHERDUCK_TOKEN` → `dbt debug --target prod`). Capture steps in `docs/infrastructure/motherduck.md`. Then open M3 PR-A on a branch `feat/m3-pr-a-infra`.
+- Jon: commit PR-A as `feat/m3-pr-a-infra`, open PR, merge. Then start PR-B (staging layer — eight `stg_nhl__*` models) per `docs/milestones/m3-silver-layer.md`.
 
 ---
 
