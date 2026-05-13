@@ -28,7 +28,7 @@ Draft. Dates are indicative only, based on ~10 hrs/week solo time starting April
 |---|-----------|--------|---------------|--------------|
 | M1 | Repo & local environment | ✅ Complete | GitHub repo, devcontainer, `uv` project, dbt scaffold, pre-commit hooks, CI running tests & linters on PR | 1–2 weeks |
 | M2 | NHL API ingestion | ✅ Complete | Historical game, skater, goalie, and PxP data loaded into bronze. Incremental daily loader. Partitioned Parquet in object storage. | 4 weeks (revised) |
-| M3 | Silver layer & sport-agnostic schema | ⬜ Not started | Conformed entities: `sport`, `league`, `team`, `player`, `game`, `event`, `market`, `odds`. dbt tests passing. | 2 weeks |
+| M3 | Silver layer & sport-agnostic schema | ⬜ Not started | `dim_sport`, `dim_league`, `dim_team`, `dim_player`, `fct_game`, `fct_game_outcome`, `fct_game_event`, `fct_game_lineup`. `dim_market`/`fct_odds_snapshot` deferred to M4 (no odds data yet). dbt tests passing. MotherDuck provisioned. | 3 weeks |
 | M4 | Odds ingestion | ⬜ Not started | The Odds API daily pulls into bronze → silver `odds` table. Historical odds dataset purchased and loaded. | 1–2 weeks |
 | M5 | Feature engineering v1 | ⬜ Not started | Gold-layer features: team strength (Elo, xG-based), goaltender form, lineup/injury adjustment, rest/travel/fatigue, home-away, b2b. | 3–4 weeks |
 | M6 | Baseline Elo+ model | ⬜ Not started | Reproduce prior Elo work in this pipeline. Backtest harness operational. First CLV numbers logged. | 1–2 weeks |

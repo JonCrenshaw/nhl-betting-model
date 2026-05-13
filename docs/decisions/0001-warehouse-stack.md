@@ -1,6 +1,6 @@
 # ADR-0001: Warehouse stack — R2 + DuckDB/MotherDuck + dbt
 
-**Status.** Proposed
+**Status.** Accepted
 **Date.** 2026-04-22
 **Deciders.** Jon
 
