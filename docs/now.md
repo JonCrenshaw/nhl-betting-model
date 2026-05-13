@@ -10,24 +10,24 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Active branch / PR
 
-- Branch: `claude/ecstatic-tu-f78712` (rename to `feat/m3-pr-a-infra` at commit time). M2 closed May 2026.
-- Open PR: none yet — PR-A ready to commit.
+- Branch: none (on `main`). M3 PR-A merged May 2026.
+- Open PR: none.
 
 ## Currently in flight
 
-- M3 PR-A. All deliverables built and locally verified: `docs/infrastructure/motherduck.md` runbook, `dbt/models/core/README.md`, `dbt/seeds/dim_sport.csv` + `dim_league.csv` + `schema.yml`, `.env.example` updated. `dbt debug --target prod` against MotherDuck and `dbt seed && dbt test --select dim_sport dim_league` against dev DuckDB both green.
+- M3 PR-B next: staging layer — eight `stg_nhl__*` models, one per bronze endpoint. Plan in `docs/milestones/m3-silver-layer.md`. Working order: `landing` → `boxscore` → `skater-summary` / `goalie-summary` / `team-summary` / `roster` / `club-schedule-season` → `play-by-play` last.
 
 ## Last session summary
 
-- M3 PR-A built. MotherDuck provisioned (database `puckbunny`, region us-west-2). Initial token leaked into untracked `docs/infrastructure/motherduck.md` was rotated; new token in `.env`. Wrote proper motherduck.md runbook (mirrors r2.md), created `dbt/models/core/` scaffold, created `dim_sport` + `dim_league` seeds with YAML descriptions and unique/not_null/relationships tests. All 12 dbt tests pass locally.
+- M3 PR-A merged. MotherDuck provisioned (database `puckbunny`, region us-west-2). `dbt debug --target prod` green; `dbt seed && dbt test` against local DuckDB green (12/12 tests). Shipped `docs/infrastructure/motherduck.md` runbook (mirrors r2.md), `dbt/models/core/` scaffold, `dim_sport` + `dim_league` seeds with unique/not_null/relationships tests, `.env.example` updated. Initial MotherDuck token leaked into an untracked doc was rotated before any commit.
 
 ## Blocked
 
-- None. Ready to commit PR-A and open the GitHub PR.
+- None.
 
 ## Next concrete step
 
-- Jon: commit PR-A as `feat/m3-pr-a-infra`, open PR, merge. Then start PR-B (staging layer — eight `stg_nhl__*` models) per `docs/milestones/m3-silver-layer.md`.
+- Open a fresh session on a new worktree. First housekeeping commit (small chore PR off `main`): add `.claude/worktrees/` and `logs/` to `.gitignore`; verify `dbt/profiles.yml` isn't tracked; remove the lingering `.claude/worktrees/ecstatic-tu-f78712/` and `.claude/worktrees/optimistic-clarke-01a87d/` directories with `git worktree prune` + `Remove-Item`. Then start PR-B (staging layer) on `feat/m3-pr-b-staging`.
 
 ---
 
