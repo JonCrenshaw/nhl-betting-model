@@ -10,16 +10,16 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Active branch / PR
 
-- Branch: to-be-created `feat/m2-pr-h-adr-0003` (PR-H edits currently sit unstaged on whatever branch Windows has checked out — Jon to create the branch in GitHub Desktop before committing). PR-G was pushed during the prior session; PR-H is the milestone-close PR for M2.
-- Open PR: none yet for PR-H (drafted locally, awaiting commit + push). PR-G PR status: confirm in GitHub before opening PR-H against `main`.
+- Branch: none (on `main`). M2 is closed — PR #36 (`feat/m2-pr-h-adr-0003`) merged May 2026.
+- Open PR: none.
 
 ## Currently in flight
 
-- M2 PR-H: ADR-0003 + warehouse doc refresh + R2 runbook + spike-file deletions — all edits drafted on disk, awaiting commit on `feat/m2-pr-h-adr-0003`, push, and PR open against `main`. When this PR merges, M2 closes — cue the `docs/efficiency.md` milestone-close review.
+- M3 planning and kickoff. No branch yet.
 
 ## Last session summary
 
-- M2 PR-H drafted locally. New files: `docs/decisions/0003-nhl-api-surface-and-bronze-shape.md` (Accepted; captures D1–D12 with revisit triggers — D1–D7 from PR-A/B planning, D8–D11 from PR-G backfill/cost-check/dedupe, D12 from the PR-F0 spike's `gameTypeId` decision; ~225 lines, decision-sentence + revisit-trigger format per option C "tight ADR") and `docs/infrastructure/r2.md` (permanent runbook covering provisioning, smoke tests, layout, cost posture, token rotation, troubleshooting — lifted from the M2 milestone doc's kickoff prerequisites section). Refreshed `docs/architecture/data-warehouse.md` (status flipped from "Not yet implemented" to "Bronze layer implemented as of M2"; bronze tree reconciled to hyphenated partition slugs `skater-summary`/`goalie-summary`/`team-summary` and adds `club-schedule-season`; ADR-0003 added to the decision-record header alongside ADR-0001). Refreshed `docs/milestones/m2-nhl-ingestion.md` (status line "PR-A through PR-G merged, PR-H in flight"; architecture-diagram tree updated to as-built `src/puckbunny/...` — `roster.py` → `team_season.py`, plus `season_summaries.py`/`backfill.py`/`cost_check.py`/`storage/base.py`/`storage/local.py` and the `tests/` tree; PR-A and PR-D bullets re-pointed at ADR-0003 in place of the deleted spike files; PR-H bullet rewritten to describe what shipped; R2 bucket-provisioning section collapsed to a one-line pointer to `docs/infrastructure/r2.md`). Updated indexes: `docs/decisions/README.md` now lists ADR-0002 and ADR-0003; `docs/ideas/README.md` drops the `prd-pbp-keys.md` entry. Deleted `docs/ideas/pra-spike-notes.md` and `docs/ideas/prd-pbp-keys.md` (the second was a scope expansion vs the literal M2-doc PR-H bullet, justified by the file's self-described deletion-in-PR-H and the ideas README's matching note; Jon confirmed mid-session). Inbound-reference repairs so no live link points at a deleted file: `src/puckbunny/storage/parquet.py` and `src/puckbunny/ingestion/nhl/schemas.py` docstrings re-pointed to ADR-0003 D3/D10; `tests/ingestion/fixtures/games/README.md` ditto; `docs/ideas/prf-stats-rest-spike-notes.md` repaired. The remaining `tools/spike/prf_stats_rest_probe.py` line-18 attribution to "pra-spike-notes §Open questions" left intact as a historical citation — not a link. Test sanity check (`pytest -q` on the two docstring-edited modules) blocked by the Linux sandbox's inability to download a fresh `uv` Python build; runtime risk is zero (docstrings only) but worth a `uv run pytest -q` on Windows before push.
+- M2 milestone-close efficiency review. Updated `docs/now.md`, `docs/roadmap.md`, and `docs/milestones/m2-nhl-ingestion.md` to reflect M2 complete. Created `.claude/commands/efficiency-review.md` (promoted from `docs/ideas/efficiency-scaffolding-followups.md`). Updated `efficiency-scaffolding-followups.md` to mark `/efficiency-review` as promoted. Prior substantive session: M2 PR-H drafted and merged — ADR-0003, R2 runbook (`docs/infrastructure/r2.md`), warehouse doc refresh, and milestone doc refresh all landed on `main`.
 
 ## Blocked
 
@@ -27,7 +27,7 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Next concrete step
 
-- In GitHub Desktop: create `feat/m2-pr-h-adr-0003` off `main`, commit the PR-H edits, push, open PR against `main`. Suggested PR title: `docs(m2): ADR-0003 + warehouse refresh + R2 runbook (M2 PR-H)`. PR description should call out (a) the deletion of two spike-notes idea files now absorbed into ADR-0003, (b) D12 as a new decision surfaced by the PR-F0 spike (vs the M2 doc's literal D1–D11 framing), and (c) that this is the milestone-close PR, so its merge should cue the `docs/efficiency.md` review per CLAUDE.md. Run `uv run pytest -q` on Windows once before push as a defensive check on the two docstring edits (`parquet.py`, `schemas.py`).
+- Start M3. Review the roadmap M3 line (silver layer + sport-agnostic schema), scaffold `docs/milestones/m3-silver-layer.md`, and confirm scope before writing any code.
 
 ---
 
@@ -42,3 +42,17 @@ Update rules:
 - **If the session produced nothing substantive (no code changes, no new ADR, no doc landings), leave "Last session summary" as-is.** The most recent substantive summary should persist so a fresh session still sees the last meaningful context. Other fields ("Currently in flight," "Next concrete step," "Blocked") can still be updated if those facts changed during the session — e.g., a planning conversation might sharpen the next step or surface a new blocker without producing any code.
 - If the active branch is `main`, leave "Open PR" as "none" rather than removing the line.
 - The "Efficiency reviews" cadence in `docs/efficiency.md` may append a short review note at the bottom of this file at milestone close. Those notes age out — clear them when the next milestone closes.
+
+---
+
+## M2 efficiency review (May 2026)
+
+**Stale docs fixed:** `now.md`, `roadmap.md`, `milestones/m2-nhl-ingestion.md` — all described PR-H as in-flight after it had already merged. Root cause: session that shipped PR-H didn't `/wrap` after the merge.
+
+**Bloat:** CLAUDE.md at 217 lines — within the 250-line budget, no action needed.
+
+**Slash commands:** Promoted `/efficiency-review` from the ideas list; it now lives in `.claude/commands/`. All other commands (`/start`, `/wrap`, `/new-adr`, `/leakage-check`, `/calibration-check`) actively used.
+
+**Parked ideas:** Recipe docs (`docs/how-to/`) approaching the promote threshold after 4+ ingestion patterns in M2 — flag at M3 close if another pattern is established. All other items remain parked with conditions unmet.
+
+**Time-to-correct-action:** Stale `now.md` added one extra read hop this session. Fix: keep `/wrap` discipline. Target remains ≤3 tool calls to orient.
