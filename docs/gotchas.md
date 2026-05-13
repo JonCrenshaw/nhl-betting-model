@@ -59,6 +59,32 @@ When the work *doesn't* match a trigger, Claude should not nag. The default is W
 
 ---
 
+## Worktree vs. main repo — write to the right path (Claude)
+
+When a Claude session runs in a worktree, the Read/Write/Edit tools take absolute paths and don't enforce which working tree the file belongs to. It is easy for Claude to write a file to the **main repo path** (`D:\Git\PuckBunny\nhl-betting-model\...`) when it meant to write to the **worktree path** (`...\.claude\worktrees\<name>\...`). The change then shows up on `main` in GitHub Desktop as a stray edit instead of on the PR branch, which is confusing and easy to miss.
+
+Rules:
+
+- When working in a worktree, **always write to the worktree's absolute path**, not the main repo's. Double-check the path prefix on every `Write` / `Edit` call.
+- If GHD shows changes on `main` that weren't intentional, the most common cause is a stray write to the main repo. Revert with `git checkout -- <file>` and `git clean -f <file>` for untracked stragglers, then re-do the change in the worktree.
+- Tools that take `--project-dir` / `--profiles-dir` / similar (dbt, uv) act on the directory you're in or the path you pass — not on whichever worktree happens to be active in the editor. Be explicit.
+
+This came up shipping M3 PR-A (May 2026): `motherduck.md` and `.env.example` were written to `main` first, then re-written to the worktree, leaving duplicates on `main` that had to be reverted before the PR could open cleanly.
+
+---
+
+## Don't store credentials in committed files — even "just for a minute" (Claude + Jon)
+
+Secrets go in `.env` (gitignored) or the OS environment. Never in a tracked or about-to-be-tracked file, even temporarily. The fact that a file is currently untracked is not protection — one stray `git add .` and it's in history.
+
+Rule: if a credential needs to be persisted, it goes to `.env` directly. Runbooks reference *where* the credential goes by variable name (e.g., `MOTHERDUCK_TOKEN`), never the value.
+
+If a credential does land in a committed-or-stageable file, rotate it immediately — assume it's compromised the moment it touches a file under the repo root.
+
+This came up provisioning MotherDuck (May 2026): the raw JWT was pasted into `docs/infrastructure/motherduck.md`. It was caught untracked and rotated before any commit, but the close call drove the rule.
+
+---
+
 ## Maintenance
 
 Append new entries below as incidents produce rules worth preserving. Each entry should:
