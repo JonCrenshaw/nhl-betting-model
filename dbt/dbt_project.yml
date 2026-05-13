@@ -36,6 +36,9 @@ models:
     intermediate:
       +materialized: ephemeral
       +schema: intermediate
+    core:
+      +materialized: table
+      +schema: core
     marts:
       +materialized: table
       +schema: marts

@@ -15,19 +15,19 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Currently in flight
 
-- M3 planning and kickoff. No branch yet.
+- M3 kickoff. Plan at `docs/milestones/m3-silver-layer.md`. MotherDuck provisioning is the blocker before PR-A.
 
 ## Last session summary
 
-- M2 milestone-close efficiency review. Updated `docs/now.md`, `docs/roadmap.md`, and `docs/milestones/m2-nhl-ingestion.md` to reflect M2 complete. Created `.claude/commands/efficiency-review.md` (promoted from `docs/ideas/efficiency-scaffolding-followups.md`). Updated `efficiency-scaffolding-followups.md` to mark `/efficiency-review` as promoted. Prior substantive session: M2 PR-H drafted and merged — ADR-0003, R2 runbook (`docs/infrastructure/r2.md`), warehouse doc refresh, and milestone doc refresh all landed on `main`.
+- M2 milestone-close efficiency review + M3 plan review. Efficiency review: updated stale docs (`now.md`, `roadmap.md`, `m2-nhl-ingestion.md`), promoted `/efficiency-review` slash command. M3 plan review: revised exit criteria (drop `market`/`odds` → M4; add `fct_game_event` + `fct_game_lineup`; estimate 3 weeks), added `models/core/` dbt layer to `dbt_project.yml`, flipped ADR-0001 to Accepted, scaffolded `docs/milestones/m3-silver-layer.md`.
 
 ## Blocked
 
-- _(none)_
+- M3 PR-A is blocked on MotherDuck provisioning (Jon). ~15 min setup + smoke test. Steps will be captured in `docs/infrastructure/motherduck.md` as part of PR-A.
 
 ## Next concrete step
 
-- Start M3. Review the roadmap M3 line (silver layer + sport-agnostic schema), scaffold `docs/milestones/m3-silver-layer.md`, and confirm scope before writing any code.
+- Jon: provision MotherDuck (account setup → create `puckbunny` database → capture `MOTHERDUCK_TOKEN` → `dbt debug --target prod`). Capture steps in `docs/infrastructure/motherduck.md`. Then open M3 PR-A on a branch `feat/m3-pr-a-infra`.
 
 ---
 
