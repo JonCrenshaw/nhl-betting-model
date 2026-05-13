@@ -19,14 +19,15 @@ Draft. Dates are indicative only, based on ~10 hrs/week solo time starting April
 ### Current status
 
 - **M1 — complete** (April 2026). Repo, devcontainer (ADR-0002), `uv`, dbt scaffold, pre-commit hooks, and CI all landed on `main`. One deferred item parked in `docs/ideas/gitleaks-local-hook.md`.
-- **M2 — in progress.** Plan at `docs/milestones/m2-nhl-ingestion.md`. PR-A (spike), PR-B (HTTP + storage primitives), PR-C (NHL games endpoint — landing + boxscore), PR-D (play-by-play), and PR-E (schedule + daily incremental + minimal manifest) merged on `main`. Package layout established at `src/puckbunny/{config,logging_setup,http,storage,ingestion}/…` with the NHL ingestion CLI live as `uv run python -m puckbunny.ingestion.nhl {games,play-by-play,daily} [--game-id <id>|--date YYYY-MM-DD]`. The `daily` subcommand walks `/v1/schedule/{date}`, filters to `gameState ∈ {FINAL, OFF}`, and consults the append-only JSONL manifest at `bronze/_manifests/ingest_runs.jsonl` to skip already-ingested games. R2 bucket `puckbunny-lake` provisioned and credentialed. Timeline extended from 2–3 weeks to 4 weeks so season-scoped loaders stay in scope. Next action: PR-F (season-scoped loaders).
+- **M2 — complete** (May 2026). All PRs (A–H) merged. Historical game, skater, goalie, and PxP data ingestion live; incremental daily loader; partitioned Parquet in R2. ADR-0003 (NHL API surface and bronze shape) committed. R2 runbook at `docs/infrastructure/r2.md`. Plan at `docs/milestones/m2-nhl-ingestion.md`.
+- **M3 — next.** Silver layer and sport-agnostic schema. Plan not yet started.
 
 ### Milestones
 
 | # | Milestone | Status | Exit criteria | Rough effort |
 |---|-----------|--------|---------------|--------------|
 | M1 | Repo & local environment | ✅ Complete | GitHub repo, devcontainer, `uv` project, dbt scaffold, pre-commit hooks, CI running tests & linters on PR | 1–2 weeks |
-| M2 | NHL API ingestion | 🟡 In progress | Historical game, skater, goalie, and PxP data loaded into bronze. Incremental daily loader. Partitioned Parquet in object storage. | 4 weeks (revised) |
+| M2 | NHL API ingestion | ✅ Complete | Historical game, skater, goalie, and PxP data loaded into bronze. Incremental daily loader. Partitioned Parquet in object storage. | 4 weeks (revised) |
 | M3 | Silver layer & sport-agnostic schema | ⬜ Not started | Conformed entities: `sport`, `league`, `team`, `player`, `game`, `event`, `market`, `odds`. dbt tests passing. | 2 weeks |
 | M4 | Odds ingestion | ⬜ Not started | The Odds API daily pulls into bronze → silver `odds` table. Historical odds dataset purchased and loaded. | 1–2 weeks |
 | M5 | Feature engineering v1 | ⬜ Not started | Gold-layer features: team strength (Elo, xG-based), goaltender form, lineup/injury adjustment, rest/travel/fatigue, home-away, b2b. | 3–4 weeks |

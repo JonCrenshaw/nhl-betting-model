@@ -26,9 +26,8 @@ Short cookbook entries: "how to add a new ingestion endpoint," "how to add a new
 
 ## Additional `.claude/commands/` slash commands
 
-We started simple in the initial scaffolding pass with `/start`, `/wrap`, `/new-adr`, `/leakage-check`, `/calibration-check`. Likely future additions, in rough order of probable usefulness:
+Commands live at `.claude/commands/`. Current set: `/start`, `/wrap`, `/new-adr`, `/leakage-check`, `/calibration-check`, `/efficiency-review` (promoted M2 close). Queued candidates:
 
-- `/efficiency-review` — runs the milestone-close checklist in `docs/efficiency.md` end-to-end
 - `/cost-check` — audits operational cost vs. the ~$50/month V1 ceiling
 - `/dbt-test-coverage` — punch list of dbt models missing tests
 - `/adr-review` — second-opinion read of an ADR before it's accepted

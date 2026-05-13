@@ -1,6 +1,6 @@
 # M2 — NHL API Ingestion
 
-**Status.** Active. PR-A through PR-G merged on `main`; PR-H (this doc refresh + ADR-0003) in flight as the milestone-close PR.
+**Status.** Complete. All PRs (A–H) merged on `main`. PR #36 (`feat/m2-pr-h-adr-0003`) was the milestone-close PR, merged May 2026.
 **Roadmap line.** `M2 | NHL API ingestion | 4 weeks` (revised from 2–3 at kickoff).
 **Prerequisites met.** M1 complete on `main` (devcontainer, uv, dbt scaffold, CI).
 
@@ -309,7 +309,7 @@ Out of scope for PR-G — explicitly:
 - Per-endpoint dedupe. D11 keeps the per-scope-unit pattern; revisit only if real evidence shows the rare-partial-failure waste is meaningful.
 - ADR-0003. PR-H's job — D1–D11 will land in that ADR with revisit triggers.
 
-**PR-H — Docs + ADR-0003** 🟡 *in flight (May 2026, branch `feat/m2-pr-h-adr-0003`)*
+**PR-H — Docs + ADR-0003** ✅ *complete (May 2026, branch `feat/m2-pr-h-adr-0003`, PR #36)*
 Milestone-close PR. ADR-0003 "NHL API surface and bronze shape" captures **D1–D12** with revisit triggers (D1–D7 from the original PR-A/B planning; D8–D11 the PR-G backfill/cost-check/dedupe shape; D12 the `gameTypeId` filter decision from the PR-F0 spike). Refreshed `docs/architecture/data-warehouse.md` (status flipped to "bronze implemented"; bronze tree reconciled with hyphenated partition slugs and `club-schedule-season`). Added `docs/infrastructure/r2.md` covering bucket setup, smoke tests, layout, cost posture, token rotation, and troubleshooting. Deleted `docs/ideas/pra-spike-notes.md` and `docs/ideas/prd-pbp-keys.md` once content was absorbed into ADR-0003.
 
 **Doc-hygiene items deferred from PR-F1/F2/G** — folded in here:
