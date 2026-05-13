@@ -1,0 +1,58 @@
+version: 2
+
+seeds:
+  - name: dim_sport
+    description: >
+      Registry of sports supported by PuckBunny. Seed table — add a row when a
+      new sport is onboarded. sport_id is the universal FK used by dim_league,
+      dim_team, dim_player, and all fact tables above the staging layer.
+    columns:
+      - name: sport_id
+        description: Surrogate key. Stable integer assigned at onboarding time.
+        tests:
+          - unique
+          - not_null
+      - name: sport_name
+        description: Human-readable sport name (e.g. "Ice Hockey").
+        tests:
+          - not_null
+      - name: sport_slug
+        description: >
+          Machine-readable slug used in code and column values
+          (e.g. "ice_hockey"). Snake_case, lowercase.
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_league
+    description: >
+      Registry of leagues per sport. Seed table — add a row when a new league
+      is onboarded. league_id is the universal FK used by dim_team and fct_game.
+    columns:
+      - name: league_id
+        description: Surrogate key. Stable integer assigned at onboarding time.
+        tests:
+          - unique
+          - not_null
+      - name: sport_id
+        description: FK to dim_sport.sport_id.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_sport')
+                field: sport_id
+      - name: league_name
+        description: Human-readable league name (e.g. "National Hockey League").
+        tests:
+          - not_null
+      - name: league_abbreviation
+        description: Standard abbreviation (e.g. "NHL").
+        tests:
+          - not_null
+      - name: country_code
+        description: >
+          ISO 3166-1 alpha-2 country code of the league's primary jurisdiction
+          (e.g. "US"). Canadian leagues use "CA".
+        tests:
+          - not_null
