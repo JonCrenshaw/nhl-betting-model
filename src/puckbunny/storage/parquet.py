@@ -146,7 +146,7 @@ def envelope_table_to_parquet_bytes(
     """Serialize ``table`` to in-memory Parquet bytes.
 
     zstd-3 was measured at ~8x compression on play-by-play payloads in
-    the PR-A spike (see ``docs/ideas/pra-spike-notes.md`` storage table).
+    the PR-A spike (see ADR-0003 D10 — ``docs/decisions/0003-nhl-api-surface-and-bronze-shape.md``).
     Higher levels offer marginal extra compression at meaningful CPU
     cost; not worth it at our volumes.
     """

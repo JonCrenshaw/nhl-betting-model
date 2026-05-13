@@ -55,3 +55,5 @@ What would cause us to reopen this decision?
 ## Current ADRs
 
 - [0001 — Warehouse stack (R2 + DuckDB/MotherDuck + dbt)](./0001-warehouse-stack.md)
+- [0002 — Development environment via Dev Containers](./0002-development-environment.md)
+- [0003 — NHL API surface and bronze shape](./0003-nhl-api-surface-and-bronze-shape.md)

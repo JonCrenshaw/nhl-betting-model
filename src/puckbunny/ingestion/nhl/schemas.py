@@ -1,10 +1,10 @@
 """Per-endpoint pydantic models for NHL game-level responses.
 
-The PR-A spike (``docs/ideas/pra-spike-notes.md`` §2) found that
-``landing``, ``boxscore``, and ``play-by-play`` overlap heavily on
-top-level metadata but each has unique fields. Rather than collapse
-them into a single all-optional schema, we model each endpoint
-separately and let the silver layer (M3) reconcile.
+The PR-A spike found that ``landing``, ``boxscore``, and
+``play-by-play`` overlap heavily on top-level metadata but each has
+unique fields (see ADR-0003 D3 — ``docs/decisions/0003-nhl-api-surface-and-bronze-shape.md``).
+Rather than collapse them into a single all-optional schema, we model
+each endpoint separately and let the silver layer (M3) reconcile.
 
 These models are deliberately *not* exhaustive. The bronze layer's
 contract is "preserve the verbatim JSON" — see ``response_json`` in
@@ -153,10 +153,11 @@ class PlayByPlayResponse(GameResponseBase):
     fails at parse time rather than landing a useless payload in
     bronze.
 
-    Per ``docs/ideas/prd-pbp-keys.md``, per-event ``details`` shapes
-    vary by ``typeDescKey`` and a few event types (``period-start``,
-    ``period-end``, ``game-end``) have no ``details`` block at all. We
-    deliberately do **not** model ``plays[*].details`` here. The bronze
+    Per ADR-0003 D3 (``docs/decisions/0003-nhl-api-surface-and-bronze-shape.md``),
+    per-event ``details`` shapes vary by ``typeDescKey`` and three
+    structural event types (``period-start``, ``period-end``,
+    ``game-end``) have no ``details`` block at all. We deliberately do
+    **not** model ``plays[*].details`` here. The bronze
     contract is "preserve the verbatim payload"; silver (M3) handles
     the per-event-type unnest where it can fail loudly without
     breaking ingest. ``extra="allow"`` (inherited from

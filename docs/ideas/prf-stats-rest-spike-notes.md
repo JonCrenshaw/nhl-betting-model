@@ -2,7 +2,7 @@
 
 **Branch.** `spike/m2-stats-rest-probe` (throwaway, not for merge to main; cherry-pick this notes file when consuming).
 **Date.** 2026-04-28.
-**Goal.** Validate the stats-rest surface contract before writing PR-F1 (`season_summaries.py`). PR-A left this surface as an open question; this note closes it. See `docs/milestones/m2-nhl-ingestion.md` PR-F section and `docs/ideas/pra-spike-notes.md` open questions.
+**Goal.** Validate the stats-rest surface contract before writing PR-F1 (`season_summaries.py`). PR-A left this surface as an open question (PR-A's spike notes were absorbed into ADR-0003 in PR-H); this note closes the stats-rest question. See `docs/milestones/m2-nhl-ingestion.md` PR-F section and [ADR-0003](../decisions/0003-nhl-api-surface-and-bronze-shape.md).
 
 ---
 

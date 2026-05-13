@@ -1,6 +1,6 @@
 # M2 — NHL API Ingestion
 
-**Status.** Active. PR-A through PR-E merged on `main`; PR-F (season-scoped loaders) next.
+**Status.** Active. PR-A through PR-G merged on `main`; PR-H (this doc refresh + ADR-0003) in flight as the milestone-close PR.
 **Roadmap line.** `M2 | NHL API ingestion | 4 weeks` (revised from 2–3 at kickoff).
 **Prerequisites met.** M1 complete on `main` (devcontainer, uv, dbt scaffold, CI).
 
@@ -36,7 +36,7 @@ Explicit quality gates so "done" is unambiguous:
 
 **Recommendation: `api-web.nhle.com` + `api.nhle.com/stats/rest/en` as primary, no fallback built.**
 
-The legacy `statsapi.web.nhl.com` was effectively deprecated in 2023 when NHL.com migrated to the modern endpoints. Committing to the modern surface avoids building a shim layer for a deprecated API. The PR-A spike (April 2026, see [`docs/ideas/pra-spike-notes.md`](../ideas/pra-spike-notes.md)) confirmed the modern surface returns 200s for `landing`, `boxscore`, and `play-by-play` with the planned `User-Agent` and no auth, against a recent playoff game. Historical depth (2015–16 onward) is verified opportunistically as PR-G backfills; if a specific endpoint is only on the legacy surface, we add a narrow, one-off pull and document it in ADR-0003.
+The legacy `statsapi.web.nhl.com` was effectively deprecated in 2023 when NHL.com migrated to the modern endpoints. Committing to the modern surface avoids building a shim layer for a deprecated API. The PR-A spike (April 2026) confirmed the modern surface returns 200s for `landing`, `boxscore`, and `play-by-play` with the planned `User-Agent` and no auth, against a recent playoff game. Historical depth (2015–16 onward) is verified opportunistically as PR-G backfills; if a specific endpoint is only on the legacy surface, we add a narrow, one-off pull and document it in ADR-0003. (Durable record: [ADR-0003 D1](../decisions/0003-nhl-api-surface-and-bronze-shape.md#d1-nhl-api-surface).)
 
 ### D2. Bronze partitioning scheme
 
@@ -159,6 +159,8 @@ Per-endpoint dedupe was considered: it would avoid the rare partial-failure case
 
 ## Architecture
 
+As-built after PR-A through PR-G (refreshed in PR-H):
+
 ```
 src/puckbunny/
 ├── __init__.py
@@ -166,34 +168,53 @@ src/puckbunny/
 ├── logging_setup.py                # structlog JSON config
 ├── storage/
 │   ├── __init__.py
-│   ├── r2.py                       # S3-compatible client (boto3 or s3fs)
+│   ├── base.py                     # storage interface
+│   ├── local.py                    # local-filesystem implementation (tests)
+│   ├── r2.py                       # S3-compatible client (boto3)
 │   └── parquet.py                  # pyarrow write + partition helpers
 ├── http/
 │   ├── __init__.py
 │   └── client.py                   # rate-limited httpx + tenacity retries
 └── ingestion/
     ├── __init__.py
+    ├── cost_check.py               # sport-agnostic projection + threshold (PR-G)
     ├── manifest.py                 # ingest_runs.jsonl read/write
     └── nhl/
         ├── __init__.py
-        ├── endpoints.py            # URL + param builders
+        ├── __main__.py             # python -m puckbunny.ingestion.nhl entrypoint
+        ├── endpoints.py            # URL + param builders, team_abbrevs(season)
         ├── schemas.py              # pydantic models for response shapes
-        ├── games.py                # landing + boxscore per gameId
-        ├── play_by_play.py         # PxP per gameId
-        ├── schedule.py             # day / season discovery
-        ├── season_summaries.py     # skater / goalie / team summaries
-        ├── roster.py               # team rosters by season
-        └── cli.py                  # `python -m puckbunny.ingestion.nhl ...`
+        ├── games.py                # landing + boxscore per gameId (PR-C)
+        ├── play_by_play.py         # PxP per gameId (PR-D)
+        ├── schedule.py             # ScheduleLoader + DailyLoader (PR-E)
+        ├── season_summaries.py     # skater / goalie / team summaries (PR-F1)
+        ├── team_season.py          # roster + club-schedule-season (PR-F2)
+        ├── backfill.py             # orchestrator + phase functions (PR-G)
+        └── cli.py                  # subcommand dispatch
 
 tests/
-├── ingestion/
-│   ├── cassettes/                  # recorded responses (pytest-recording)
-│   ├── test_http_client.py
-│   ├── test_nhl_games.py
-│   ├── test_nhl_pbp.py
-│   ├── test_schedule.py
-│   ├── test_manifest.py
-│   └── test_smoke_integration.py   # marker: integration
+├── conftest.py
+├── test_config.py
+├── test_logging_setup.py
+├── http/
+│   └── test_client.py
+├── storage/
+│   ├── test_local.py
+│   ├── test_parquet.py
+│   └── test_r2.py
+└── ingestion/
+    ├── test_manifest.py
+    ├── test_cost_check.py          # PR-G
+    ├── test_backfill.py            # PR-G orchestrator
+    ├── test_backfill_resume.py     # PR-G end-to-end resume
+    ├── test_nhl_endpoints.py
+    ├── test_nhl_schemas.py
+    ├── test_nhl_games.py
+    ├── test_nhl_pbp.py
+    ├── test_nhl_season_summaries.py
+    ├── test_nhl_team_season.py
+    ├── test_schedule.py
+    └── test_smoke_integration.py   # marker: integration (live API)
 ```
 
 ### New runtime dependencies (pyproject.toml)
@@ -232,7 +253,7 @@ Exact URL shapes and pagination behavior are finalized in PR-A for the `api-web`
 Each PR is independently reviewable and mergeable.
 
 **PR-A — Spike: one-game end-to-end** ✅ *complete (April 2026, branch `spike/nhl-api-one-game`)*
-Fetched one recent game's landing + boxscore + play-by-play against live API, wrote to local Parquet, sanity-checked shape and volume. Findings in [`docs/ideas/pra-spike-notes.md`](../ideas/pra-spike-notes.md); the actionable corrections are folded into PR-C/D/E and Risk #4 below. De-risked PR-B through PR-E.
+Fetched one recent game's landing + boxscore + play-by-play against live API, wrote to local Parquet, sanity-checked shape and volume. Findings absorbed into [ADR-0003](../decisions/0003-nhl-api-surface-and-bronze-shape.md) in PR-H (D3 per-endpoint schemas, D8 `{FINAL, OFF}` state set, D10 measured storage projection); the actionable corrections were folded into PR-C/D/E and Risk #4 below. De-risked PR-B through PR-E.
 
 **PR-B — HTTP client + storage primitives** ✅ *complete (April 2026, branch `feat/m2-pr-b-http-storage`)*
 `http/client.py` (rate limiter + retries), `storage/r2.py`, `storage/parquet.py`, `config.py`, `logging_setup.py`. Tests use cassettes and a local-filesystem Parquet target. No NHL-specific code.
@@ -241,7 +262,7 @@ Fetched one recent game's landing + boxscore + play-by-play against live API, wr
 `ingestion/nhl/games.py`, `schemas.py`, and the typed-envelope Parquet writer. Pydantic models *per endpoint* (separate `LandingResponse` / `BoxscoreResponse` shapes — the three game-level endpoints overlap heavily but each has unique top-level fields, per spike notes §2). Cassette tests via committed JSON fixtures + ``httpx.MockTransport`` (functionally equivalent to the plan's pytest-recording recipe; see test module docstring). CLI: `uv run python -m puckbunny.ingestion.nhl games --game-id <id>`.
 
 **PR-D — Play-by-play loader** ✅ *complete (April 2026, branch `feat/m2-pr-d-pbp`)*
-`ingestion/nhl/play_by_play.py` built on PR-C primitives. PxP is the largest payload per game; validates the bronze layout works for volume. Pre-parser key scan landed in [`docs/ideas/prd-pbp-keys.md`](../ideas/prd-pbp-keys.md): coord/player-id presence confirmed on shooting events and faceoffs; three structural event types (`period-start`, `period-end`, `game-end`) carry no `details` block — silver (M3) treats those as known exceptions, bronze stays tolerant via `extra="allow"` on `PlayByPlayResponse`. CLI: `uv run python -m puckbunny.ingestion.nhl play-by-play --game-id <id>`. Bronze partition `bronze/nhl_api/play-by-play/ingest_date=YYYY-MM-DD/`. Cassette tests via the same committed-JSON-fixture + `httpx.MockTransport` pattern PR-C established.
+`ingestion/nhl/play_by_play.py` built on PR-C primitives. PxP is the largest payload per game; validates the bronze layout works for volume. Pre-parser key scan confirmed coord/player-id presence on shooting events and faceoffs; three structural event types (`period-start`, `period-end`, `game-end`) carry no `details` block — silver (M3) treats those as known exceptions, bronze stays tolerant via `extra="allow"` on `PlayByPlayResponse`. (Durable record: [ADR-0003 D3](../decisions/0003-nhl-api-surface-and-bronze-shape.md#d3-bronze-payload-shape); PR-H absorbed the full scan output.) CLI: `uv run python -m puckbunny.ingestion.nhl play-by-play --game-id <id>`. Bronze partition `bronze/nhl_api/play-by-play/ingest_date=YYYY-MM-DD/`. Cassette tests via the same committed-JSON-fixture + `httpx.MockTransport` pattern PR-C established.
 
 **PR-E — Schedule + daily incremental** ✅ *complete (April 2026, branch `feat/m2-pr-e-schedule`)*
 `ingestion/nhl/schedule.py` (`ScheduleLoader` + `DailyLoader`) and `ingestion/manifest.py` (minimal append-only JSONL store at `bronze/_manifests/ingest_runs.jsonl`, per D7). CLI: `uv run python -m puckbunny.ingestion.nhl daily [--date YYYY-MM-DD] [--ingest-date YYYY-MM-DD]`. The `--date` default resolves to yesterday in America/Toronto via `zoneinfo` + the new `tzdata` runtime dep, so a morning UTC run picks up the previous Eastern slate even when the Eastern day boundary falls hours before UTC midnight. The walker iterates `gameWeek[*]` filtered to the target date, fetches only games whose `gameState ∈ {FINAL, OFF}` (constant `INGESTIBLE_GAME_STATES` in `endpoints.py`, per spike notes §1), and skips any game whose three game-level endpoints are already recorded in the manifest. End-to-end cassette test covers schedule + landing + boxscore + play-by-play in one flow; manifest dedupe is exercised both directions (skip when present, re-fetch when partial). Manifest entries are recorded per `(endpoint_template, game_id)` so PR-G's backfill can opt for per-endpoint dedupe without a schema change.
@@ -288,14 +309,14 @@ Out of scope for PR-G — explicitly:
 - Per-endpoint dedupe. D11 keeps the per-scope-unit pattern; revisit only if real evidence shows the rare-partial-failure waste is meaningful.
 - ADR-0003. PR-H's job — D1–D11 will land in that ADR with revisit triggers.
 
-**PR-H — Docs + ADR-0003** (~0.5 day)
-ADR-0003 "NHL API surface and bronze shape" captures **D1–D11** with revisit triggers (D8–D11 cover the PR-G backfill/cost-check/dedupe shape — make sure they're in the ADR alongside D1–D7). Update `docs/architecture/data-warehouse.md` if PR-A surfaced changes. Add `docs/infrastructure/r2.md` covering bucket setup. Delete `docs/ideas/pra-spike-notes.md` once its content is absorbed into ADR-0003.
+**PR-H — Docs + ADR-0003** 🟡 *in flight (May 2026, branch `feat/m2-pr-h-adr-0003`)*
+Milestone-close PR. ADR-0003 "NHL API surface and bronze shape" captures **D1–D12** with revisit triggers (D1–D7 from the original PR-A/B planning; D8–D11 the PR-G backfill/cost-check/dedupe shape; D12 the `gameTypeId` filter decision from the PR-F0 spike). Refreshed `docs/architecture/data-warehouse.md` (status flipped to "bronze implemented"; bronze tree reconciled with hyphenated partition slugs and `club-schedule-season`). Added `docs/infrastructure/r2.md` covering bucket setup, smoke tests, layout, cost posture, token rotation, and troubleshooting. Deleted `docs/ideas/pra-spike-notes.md` and `docs/ideas/prd-pbp-keys.md` once content was absorbed into ADR-0003.
 
-**Doc-hygiene items deferred from PR-F1/F2/G** — fold these in here so the per-PR scope stays tight:
+**Doc-hygiene items deferred from PR-F1/F2/G** — folded in here:
 
-- The **M2-doc architecture diagram** (above, in this file) still lists the original PR-F2 module name `roster.py` and predates `season_summaries.py`, `team_season.py`, `backfill.py`, and `cost_check.py`. Refresh the tree to match `src/puckbunny/...` after PR-G lands.
-- The **"Endpoints in scope for M2"** subsection (in this file) is current as of PR-F0/F1 corrections but should be re-verified against the as-built loaders post-PR-G.
-- Confirm `_BASE_TEAM_ABBREVS_2015_2017` and `team_abbrevs(season)`'s franchise-event coverage (VGK/SEA/UTA) are documented in ADR-0003 since they encode an ingestion-correctness invariant that's easy to lose track of on multi-sport expansion.
+- ✅ Architecture-diagram tree refreshed to match as-built `src/puckbunny/...` (replaces `roster.py` with `team_season.py`; adds `season_summaries.py`, `backfill.py`, `cost_check.py`, `storage/base.py`, `storage/local.py`; updates the `tests/` tree).
+- ✅ "Endpoints in scope for M2" verified against as-built loader constants (`endpoints.py`).
+- ✅ `_BASE_TEAM_ABBREVS_2015_2017` and `team_abbrevs(season)` franchise-event coverage (VGK / SEA / UTA) documented in ADR-0003 Operational Notes.
 
 **Estimate.** 11 working days ≈ 4 calendar weeks at ~10 hrs/week. Roadmap originally called 2–3 weeks; **M2 is extended to 4 weeks** so PR-F (season-scoped loaders) stays in scope. Reflected in roadmap.md as a single-line update at kickoff.
 
@@ -322,86 +343,4 @@ ADR-0003 "NHL API surface and bronze shape" captures **D1–D11** with revisit t
 
 ## Kickoff prerequisites (Jon)
 
-The only remaining infrastructure step is provisioning Cloudflare R2 and getting credentials into `.env`. Steps below.
-
-### R2 bucket provisioning — step by step
-
-**Why R2.** ADR-0001 chose Cloudflare R2 for object storage because it's S3-compatible (so anything that talks S3 works), priced at ~$0.015/GB/month, and — critically — has zero egress fees, which is what makes DuckDB-over-Parquet economical for backtests.
-
-**Estimated time.** 15–20 minutes, all in the Cloudflare dashboard. No CLI required.
-
-**1. Cloudflare account.** If you don't already have one, sign up at <https://dash.cloudflare.com/sign-up>. The free tier is fine; R2 is billed separately and has its own free allowance (10 GB storage, 1M Class A ops, 10M Class B ops per month) which we'll stay inside for M2.
-
-**2. Enable R2.** In the Cloudflare dashboard, click **R2 Object Storage** in the left sidebar. First-time use will prompt you to add a payment method even to use the free tier — this is normal. No charges accrue until you exceed the free allowance.
-
-**3. Create the bucket.** Click **Create bucket**.
-
-- Name: `puckbunny-lake`. (Note: I'm renaming from the `nhl-bet-lake` placeholder in `data-warehouse.md` to match the package name. Bucket names are global within an account but not across accounts, so it's fine. PR-H updates the warehouse doc.)
-- Location hint: **Automatic** is fine. If you want to pin it, **ENAM** (Eastern North America) is closest to most NHL data sources.
-- Default storage class: **Standard**.
-- Click **Create bucket**.
-
-**4. Note the S3 API endpoint.** On the bucket overview page, expand **Settings** → **S3 API**. You'll see an endpoint URL of the form `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`. Copy this. The `<ACCOUNT_ID>` is also your Cloudflare account ID, visible top-right in the dashboard.
-
-**5. Create an API token scoped to this bucket.** Cloudflare moves this around; current path (verified April 2026):
-
-- Left sidebar → **Storage & databases** → **R2** to reach the R2 Overview page.
-- On Overview, find the **API Tokens** card → click **Manage**.
-- Click **Create API token**.
-
-- Token name: `puckbunny-ingestion-local-jon`. Naming convention is `<purpose>-<environment>-<owner>` so we can revoke cleanly later.
-- Permissions: **Object Read & Write**.
-- Specify bucket: select **Apply to specific buckets only** and pick `puckbunny-lake`. Don't grant account-wide access — least privilege.
-- TTL: leave as **Forever** for now; we rotate when M10 wires up Dagster Cloud and uses its own token.
-- Click **Create API token**.
-
-**6. Save the credentials immediately.** Cloudflare shows the secret access key **once**. You get four values:
-
-- **Access Key ID** (looks like a 32-char hex string)
-- **Secret Access Key** (longer hex string)
-- **Endpoint** for S3 clients (`https://<ACCOUNT_ID>.r2.cloudflarestorage.com`)
-- **Jurisdiction-specific endpoints** — ignore unless we later need EU-jurisdiction storage; not relevant for V1.
-
-**7. Drop them into `.env`.** Create `D:\Git\PuckBunny\nhl-betting-model\.env` (file does not exist yet; `.gitignore` already excludes `.env` and `.env.*` except `.env.example`):
-
-```dotenv
-# Cloudflare R2 (S3-compatible)
-R2_ACCOUNT_ID=<your account ID>
-R2_ACCESS_KEY_ID=<from step 6>
-R2_SECRET_ACCESS_KEY=<from step 6>
-R2_ENDPOINT_URL=https://<ACCOUNT_ID>.r2.cloudflarestorage.com
-R2_BUCKET=puckbunny-lake
-R2_REGION=auto
-
-# Ingestion defaults (overridable per-invocation)
-INGEST_RATE_LIMIT_PER_SEC=2
-INGEST_USER_AGENT=PuckBunny/0.1 (contact: crenshaw.jonathan@gmail.com)
-```
-
-`R2_REGION=auto` is the magic value boto3 wants for R2; the actual region is server-determined.
-
-**8. Commit a `.env.example`.** PR-B includes this file. It's the same shape as above with values blanked out so future contributors know which keys are required.
-
-**9. Smoke-test the credentials.** Optional but worth doing before PR-B opens. Two quick options:
-
-**Option A — `aws` CLI** (if you have it installed):
-```powershell
-aws s3 ls s3://puckbunny-lake/ `
-  --endpoint-url https://<ACCOUNT_ID>.r2.cloudflarestorage.com `
-  --region auto
-```
-Should return empty (no error).
-
-**Option B — Python one-liner from the activated venv**:
-```powershell
-uv run python -c "import os, boto3; from dotenv import load_dotenv; load_dotenv(); s3 = boto3.client('s3', endpoint_url=os.environ['R2_ENDPOINT_URL'], aws_access_key_id=os.environ['R2_ACCESS_KEY_ID'], aws_secret_access_key=os.environ['R2_SECRET_ACCESS_KEY'], region_name='auto'); print(s3.list_buckets())"
-```
-Requires `boto3` and `python-dotenv` to be installed; both will land in PR-B as runtime deps. If you'd rather not pre-install, skip this step and the smoke test runs as part of PR-B's CI.
-
-### Things to double-check before PR-A starts
-
-- `.env` exists, `git status` confirms it's not tracked.
-- Smoke test (step 9) returns `OK. Object count: 0`. This is the real gate — it proves the credentials work end-to-end.
-- (Optional, nice-to-have) The token-creation email from Cloudflare arrived. Sometimes routed to spam or not sent at all on some account types; not a blocker if the smoke test passes.
-
-Once those are green, PR-A is unblocked.
+Done. R2 bucket `puckbunny-lake` was provisioned and credentialed in April 2026, unblocking PR-A. The bucket-provisioning runbook moved to [`docs/infrastructure/r2.md`](../infrastructure/r2.md) in PR-H as a permanent operational doc (covers provisioning, smoke tests, layout, cost posture, token rotation, and troubleshooting).
