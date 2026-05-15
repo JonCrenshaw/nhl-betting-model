@@ -1,0 +1,484 @@
+version: 2
+
+models:
+
+  - name: stg_nhl__landing
+    description: >
+      One row per finished NHL game sourced from /v1/gamecenter/{gameId}/landing.
+      Carries game metadata (teams, scores, venue, period structure flags) and
+      deduplicates to the latest fetch per game_id. Use this as the primary
+      game-spine source for fct_game and fct_game_outcome; use stg_nhl__boxscore
+      for player-level stats and stg_nhl__play_by_play for event detail.
+    columns:
+      - name: game_id
+        description: NHL game identifier. Encodes season-start year in leading digits (ADR-0003 §7).
+        tests:
+          - unique
+          - not_null
+      - name: season
+        description: Eight-character season string (e.g. "20252026").
+        tests:
+          - not_null
+      - name: game_type
+        description: "1=preseason, 2=regular season, 3=playoffs."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3]
+      - name: game_date
+        description: Local game date (YYYY-MM-DD) from the API response.
+        tests:
+          - not_null
+      - name: game_state
+        description: >
+          Final game state from bronze. Only FINAL and OFF reach bronze
+          (INGESTIBLE_GAME_STATES filter in the loader).
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['FINAL', 'OFF']
+      - name: start_time_utc
+        description: Scheduled start time in UTC.
+        tests:
+          - not_null
+      - name: away_team_id
+        description: NHL team identifier for the away team.
+        tests:
+          - not_null
+      - name: away_team_abbrev
+        description: Three-letter abbreviation for the away team (e.g. "TBL").
+        tests:
+          - not_null
+      - name: away_score
+        description: Away team final score. Null for in-progress games (none expected in bronze).
+      - name: home_team_id
+        description: NHL team identifier for the home team.
+        tests:
+          - not_null
+      - name: home_team_abbrev
+        description: Three-letter abbreviation for the home team.
+        tests:
+          - not_null
+      - name: home_score
+        description: Home team final score.
+      - name: venue_name
+        description: Venue name (default locale).
+      - name: venue_timezone
+        description: IANA timezone string for the venue (e.g. "America/Montreal").
+      - name: reg_periods
+        description: Number of regulation periods (always 3 for NHL).
+      - name: ot_in_use
+        description: True if overtime was in use for this game type/season.
+      - name: shootout_in_use
+        description: True if a shootout was possible for this game type.
+      - name: final_period_type
+        description: Period type when the game ended — REG, OT, or SO.
+      - name: ingest_date
+        description: Hive partition date from the R2 path (date the file was written).
+        tests:
+          - not_null
+      - name: fetched_at_utc
+        description: Timestamp when the NHL API was called for this game.
+        tests:
+          - not_null
+
+  - name: stg_nhl__boxscore
+    description: >
+      One row per finished NHL game sourced from /v1/gamecenter/{gameId}/boxscore.
+      Shares top-level game metadata with stg_nhl__landing and adds game outcome
+      (last_period_type, ot_periods) plus a player_by_game_stats_json blob that
+      the intermediate layer parses into per-player rows.
+    columns:
+      - name: game_id
+        description: NHL game identifier.
+        tests:
+          - unique
+          - not_null
+      - name: season
+        description: Eight-character season string.
+        tests:
+          - not_null
+      - name: game_type
+        description: "1=preseason, 2=regular season, 3=playoffs."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3]
+      - name: game_date
+        description: Local game date.
+        tests:
+          - not_null
+      - name: game_state
+        description: Final game state; only FINAL and OFF reach bronze.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['FINAL', 'OFF']
+      - name: start_time_utc
+        description: Scheduled start time in UTC.
+        tests:
+          - not_null
+      - name: away_team_id
+        description: NHL team identifier for the away team.
+        tests:
+          - not_null
+      - name: away_team_abbrev
+        description: Three-letter abbreviation for the away team.
+        tests:
+          - not_null
+      - name: home_team_id
+        description: NHL team identifier for the home team.
+        tests:
+          - not_null
+      - name: home_team_abbrev
+        description: Three-letter abbreviation for the home team.
+        tests:
+          - not_null
+      - name: last_period_type
+        description: Period type in which the game ended — REG, OT, or SO.
+      - name: ot_periods
+        description: Number of overtime periods played. Null for regulation wins.
+      - name: player_by_game_stats_json
+        description: >
+          Verbatim playerByGameStats JSON from the boxscore response. Contains
+          awayTeam and homeTeam sub-objects each with forwards, defense, and
+          goalies arrays. Parsed by int_nhl__game_skater_stats and
+          int_nhl__game_goalie_stats. Note the key is "defense" (not "defensemen").
+        tests:
+          - not_null
+      - name: ingest_date
+        description: Hive partition date.
+        tests:
+          - not_null
+      - name: fetched_at_utc
+        description: Timestamp when the NHL API was called.
+        tests:
+          - not_null
+
+  - name: stg_nhl__play_by_play
+    description: >
+      One row per finished NHL game sourced from /v1/gamecenter/{gameId}/play-by-play.
+      Preserves the plays array (one element per game event) and rosterSpots array
+      as JSON blobs for the intermediate layer. int_nhl__game_events unnests plays
+      into one row per event. play_count is a data-quality signal.
+    columns:
+      - name: game_id
+        description: NHL game identifier.
+        tests:
+          - unique
+          - not_null
+      - name: season
+        description: Eight-character season string.
+        tests:
+          - not_null
+      - name: game_type
+        description: "1=preseason, 2=regular season, 3=playoffs."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3]
+      - name: game_date
+        description: Local game date.
+        tests:
+          - not_null
+      - name: game_state
+        description: Final game state; only FINAL and OFF reach bronze.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['FINAL', 'OFF']
+      - name: start_time_utc
+        description: Scheduled start time in UTC.
+        tests:
+          - not_null
+      - name: away_team_id
+        description: NHL team identifier for the away team.
+        tests:
+          - not_null
+      - name: away_team_abbrev
+        description: Three-letter abbreviation for the away team.
+        tests:
+          - not_null
+      - name: home_team_id
+        description: NHL team identifier for the home team.
+        tests:
+          - not_null
+      - name: home_team_abbrev
+        description: Three-letter abbreviation for the home team.
+        tests:
+          - not_null
+      - name: play_count
+        description: >
+          Number of events in the plays array. Suspicious if 0 for a finished game;
+          a typical NHL game has 300-400 events including stoppages.
+        tests:
+          - not_null
+      - name: plays_json
+        description: >
+          Verbatim plays array as JSON text. Parsed by int_nhl__game_events into
+          one row per event. Three structural event types (period-start, period-end,
+          game-end) have no details block (ADR-0003 D3).
+        tests:
+          - not_null
+      - name: roster_spots_json
+        description: >
+          Verbatim rosterSpots array as JSON text. Contains dressed players for
+          both teams with sweater numbers and player IDs.
+      - name: ingest_date
+        description: Hive partition date.
+        tests:
+          - not_null
+      - name: fetched_at_utc
+        description: Timestamp when the NHL API was called.
+        tests:
+          - not_null
+
+  - name: stg_nhl__skater_summary
+    description: >
+      One row per (season, player_id) sourced from /stats/rest/en/skater/summary.
+      Unnested from the data array in the bronze response (one bronze row per
+      season). Season aggregates combine regular season and playoff games;
+      downstream consumers that need only regular-season data must join to
+      fct_game filtered by game_type = 2. faceoff_win_pct and toi_per_game_s
+      are null for players with no faceoff opportunities.
+    columns:
+      - name: season
+        description: Eight-character season string (e.g. "20242025").
+        tests:
+          - not_null
+      - name: player_id
+        description: NHL player identifier (stable across seasons).
+        tests:
+          - not_null
+      - name: skater_full_name
+        description: Player full name as returned by the API.
+      - name: team_abbrevs
+        description: >
+          Comma-separated team abbreviations for players who were traded
+          mid-season (e.g. "ANA,BUF").
+      - name: position_code
+        description: "Position code: C, L, R, D."
+      - name: games_played
+        description: Games played in the season (regular + playoffs combined).
+        tests:
+          - not_null
+      - name: goals
+        description: Total goals.
+        tests:
+          - not_null
+      - name: assists
+        description: Total assists.
+        tests:
+          - not_null
+      - name: points
+        description: Total points (goals + assists).
+        tests:
+          - not_null
+      - name: shots
+        description: Total shots on goal.
+      - name: plus_minus
+        description: Plus/minus rating.
+      - name: faceoff_win_pct
+        description: Faceoff win percentage (0–1). Null for non-faceoff players.
+      - name: toi_per_game_s
+        description: Average time on ice per game in seconds (float, e.g. 1340.2).
+      - name: ingest_date
+        description: Hive partition date.
+        tests:
+          - not_null
+      - name: fetched_at_utc
+        description: Timestamp when the NHL API was called.
+        tests:
+          - not_null
+
+  - name: stg_nhl__goalie_summary
+    description: >
+      One row per (season, player_id) sourced from /stats/rest/en/goalie/summary.
+      Unnested from the data array (one bronze row per season). savePct and
+      goalsAgainstAverage are null for goalies with zero appearances.
+    columns:
+      - name: season
+        description: Eight-character season string.
+        tests:
+          - not_null
+      - name: player_id
+        description: NHL player identifier.
+        tests:
+          - not_null
+      - name: goalie_full_name
+        description: Goalie full name as returned by the API.
+      - name: team_abbrevs
+        description: Comma-separated team abbreviations (multi-team if traded).
+      - name: games_played
+        description: Games played in the season.
+        tests:
+          - not_null
+      - name: wins
+        description: Total wins.
+      - name: losses
+        description: Total losses (regulation).
+      - name: ot_losses
+        description: Overtime/shootout losses.
+      - name: save_pct
+        description: Save percentage (0–1). Null for goalies with 0 shots faced.
+      - name: goals_against_avg
+        description: Goals against average. Null for goalies with 0 games played.
+      - name: shutouts
+        description: Total shutouts.
+      - name: ingest_date
+        description: Hive partition date.
+        tests:
+          - not_null
+      - name: fetched_at_utc
+        description: Timestamp when the NHL API was called.
+        tests:
+          - not_null
+
+  - name: stg_nhl__team_summary
+    description: >
+      One row per (season, team_id) sourced from /stats/rest/en/team/summary.
+      Unnested from the data array (one bronze row per season). gamesPlayed
+      includes both regular season and playoffs; use with caution for
+      per-game rate comparisons across seasons where playoff depth varies.
+    columns:
+      - name: season
+        description: Eight-character season string.
+        tests:
+          - not_null
+      - name: team_id
+        description: NHL team identifier (stable; not abbreviated).
+        tests:
+          - not_null
+      - name: team_full_name
+        description: Full team name (e.g. "Washington Capitals").
+      - name: games_played
+        description: Total games played (regular + playoffs combined).
+        tests:
+          - not_null
+      - name: wins
+        description: Total wins.
+      - name: losses
+        description: Total losses (regulation).
+      - name: ot_losses
+        description: Overtime/shootout losses.
+      - name: points
+        description: Standings points (2 per win, 1 per OT loss).
+      - name: point_pct
+        description: Points percentage (points / (2 * games_played)).
+      - name: regulation_and_ot_wins
+        description: Wins in regulation or overtime (excludes shootout wins).
+      - name: goals_for_per_game
+        description: Average goals for per game.
+      - name: goals_against_per_game
+        description: Average goals against per game.
+      - name: ingest_date
+        description: Hive partition date.
+        tests:
+          - not_null
+      - name: fetched_at_utc
+        description: Timestamp when the NHL API was called.
+        tests:
+          - not_null
+
+  - name: stg_nhl__roster
+    description: >
+      One row per (season, team_abbrev, player_id) sourced from
+      /v1/roster/{team}/{season}. Unions forwards, defensemen, and goalies into
+      a single table with position_group ('F', 'D', 'G') as discriminator.
+      The roster response has no embedded season or team fields; both are
+      carried from the bronze envelope. Franchise events (ARI→UTA, VGK/SEA
+      expansions) are handled in int_nhl__team_spine; team_abbrev passes
+      through as-is here.
+    columns:
+      - name: season
+        description: Eight-character season string from the bronze envelope.
+        tests:
+          - not_null
+      - name: team_abbrev
+        description: Three-letter team abbreviation from endpoint_params_json.
+        tests:
+          - not_null
+      - name: player_id
+        description: NHL player identifier.
+        tests:
+          - not_null
+      - name: position_group
+        description: "Coarse position group: F (forward), D (defenseman), G (goalie)."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['F', 'D', 'G']
+      - name: position_code
+        description: "Fine-grained position: C, L, R (forwards), D (defense), G (goalie)."
+      - name: first_name
+        description: Player first name (default locale).
+      - name: last_name
+        description: Player last name (default locale).
+      - name: sweater_number
+        description: Jersey number. Null for some unsigned/callup players.
+      - name: shoots_catches
+        description: "Handedness: L or R."
+      - name: height_in
+        description: Height in inches.
+      - name: weight_lb
+        description: Weight in pounds.
+      - name: birth_date
+        description: Date of birth. Null for a small fraction of international players.
+      - name: birth_country
+        description: ISO 3166-1 alpha-3 birth country code (e.g. "CAN", "USA").
+      - name: ingest_date
+        description: Hive partition date.
+        tests:
+          - not_null
+      - name: fetched_at_utc
+        description: Timestamp when the NHL API was called.
+        tests:
+          - not_null
+
+  - name: stg_nhl__club_schedule_season
+    description: >
+      One row per (season, team_abbrev) sourced from
+      /v1/club-schedule-season/{team}/{season}. Preserves the full games array
+      as a JSON blob; individual game rows are resolved via stg_nhl__landing
+      (the authoritative game-spine source). The primary use of this staging
+      model is to confirm team-season membership in int_nhl__team_spine.
+      game_count spans all game types (preseason, regular, playoffs).
+    columns:
+      - name: season
+        description: Eight-character season string from the bronze envelope.
+        tests:
+          - not_null
+      - name: team_abbrev
+        description: Three-letter team abbreviation from endpoint_params_json.
+        tests:
+          - not_null
+      - name: current_season
+        description: >
+          currentSeason from the response. Should match season; a mismatch
+          indicates the API returned data for the wrong season.
+      - name: previous_season
+        description: Eight-character season string for the prior season.
+      - name: next_season
+        description: Eight-character season string for the following season.
+      - name: club_timezone
+        description: IANA timezone for the team's home arena (e.g. "America/Toronto").
+      - name: club_utc_offset
+        description: UTC offset string for the team's home arena (e.g. "-04:00").
+      - name: game_count
+        description: Total number of games in the games array (preseason + regular + playoffs).
+      - name: games_json
+        description: >
+          Verbatim games array as JSON text. Each element has the same schema
+          as a ScheduleGame (id, season, gameType, gameDate, gameState,
+          awayTeam, homeTeam). Use stg_nhl__landing for the authoritative
+          game-level data.
+        tests:
+          - not_null
+      - name: ingest_date
+        description: Hive partition date.
+        tests:
+          - not_null
+      - name: fetched_at_utc
+        description: Timestamp when the NHL API was called.
+        tests:
+          - not_null

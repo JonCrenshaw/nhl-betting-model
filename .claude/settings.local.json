@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(\"---\")"
+      "PowerShell(\"---\")",
+      "Bash(Get-ChildItem -Path \"D:\\\\Git\\\\PuckBunny\\\\nhl-betting-model\\\\.claude\\\\worktrees\\\\naughty-kare-6ecdee\\\\dbt\" -Name \"profiles.yml*\" -File)",
+      "Bash(python -c ' *)",
+      "Bash(git add *)"
     ]
   }
 }
