@@ -1,0 +1,112 @@
+version: 2
+
+models:
+
+  - name: dim_team
+    description: >
+      Silver team dimension. One row per NHL team. team_id is the NHL API's
+      stable integer identifier and serves as the PK. When a second sport is
+      onboarded an ADR will address cross-sport key uniqueness. league_id is
+      hardcoded to 1 (NHL); sport_id propagates through dim_league. Arena and
+      geography columns are nullable — not available in bronze; populate from
+      a future enrichment source.
+    columns:
+      - name: team_id
+        description: >
+          NHL API team identifier (stable integer). PK for this table and the
+          FK used by fct_game, fct_game_outcome, fct_game_event, and
+          fct_game_lineup.
+        tests:
+          - unique
+          - not_null
+      - name: league_id
+        description: FK to dim_league.league_id. Always 1 (NHL) for current data.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_league')
+                field: league_id
+      - name: team_abbrev
+        description: >
+          Most recent three-letter abbreviation (e.g. "TBL"). Reflects the
+          latest game appearance in bronze.
+        tests:
+          - not_null
+      - name: team_full_name
+        description: >
+          Most recent full team name (e.g. "Tampa Bay Lightning"). Null only
+          if the team never appeared in a team_summary bronze pull.
+      - name: external_ids
+        description: >
+          JSON object carrying source-system identifiers for cross-source joins.
+          Always contains nhl_api_team_id. Example: {"nhl_api_team_id": 14}.
+        tests:
+          - not_null
+      - name: arena_name
+        description: Home arena name. Null — not in bronze; populate from enrichment.
+      - name: city
+        description: City. Null — not in bronze; populate from enrichment.
+      - name: state_province
+        description: State or province. Null — not in bronze.
+      - name: country_code
+        description: ISO 3166-1 alpha-2 country code. Null — not in bronze.
+
+  - name: dim_player
+    description: >
+      Silver player dimension. One row per NHL player. player_id is the NHL
+      API's stable integer identifier and serves as the PK. No league_id FK:
+      a player can appear in multiple leagues (e.g. AHL call-up → NHL); the
+      league association lives in fct_game_lineup. Demographics come from the
+      most recent roster pull and are null for players who appear only in
+      season summary data. full_name is always populated.
+    columns:
+      - name: player_id
+        description: >
+          NHL API player identifier (stable integer). PK for this table and
+          the FK used by fct_game_lineup and fct_game_event.
+        tests:
+          - unique
+          - not_null
+      - name: full_name
+        description: >
+          Player full name. Derived from first_name + last_name when available;
+          falls back to skater_full_name or goalie_full_name from summary tables.
+        tests:
+          - not_null
+      - name: first_name
+        description: Player first name from the most recent roster row. Null if no roster row.
+      - name: last_name
+        description: Player last name from the most recent roster row. Null if no roster row.
+      - name: position_group
+        description: >
+          Coarse position group: F (forward), D (defenseman), G (goalie).
+          Roster-authoritative; inferred from summary tables as fallback.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['F', 'D', 'G']
+      - name: position_code
+        description: >
+          Fine-grained position code: C, L, R (forwards), D (defenseman), G (goalie).
+          From roster; falls back to skater_summary.
+      - name: shoots_catches
+        description: "Shooting/catching handedness: L or R. Null if no roster row."
+      - name: height_in
+        description: Height in inches. Null if no roster row.
+      - name: weight_lb
+        description: Weight in pounds. Null if no roster row.
+      - name: birth_date
+        description: >
+          Date of birth. Null if no roster row, or if the roster itself has null
+          (rare for some international players).
+      - name: birth_country
+        description: >
+          ISO 3166-1 alpha-3 birth country code (e.g. "CAN", "USA").
+          Null if no roster row.
+      - name: external_ids
+        description: >
+          JSON object carrying source-system identifiers. Always contains
+          nhl_api_player_id. Example: {"nhl_api_player_id": 8478402}.
+        tests:
+          - not_null

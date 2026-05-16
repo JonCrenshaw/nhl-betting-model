@@ -168,6 +168,20 @@ Examples of things that **don't** need an ADR:
 
 ---
 
+## Subagents
+
+Three cases warrant a subagent in this project:
+
+1. **Bronze/staging schema discovery** — if you need to understand what fields a `response_json` endpoint actually contains before writing a staging or intermediate model, use `subagent_type=Explore`. Keeps 5–10 file reads out of the main context.
+2. **Audit tasks** — `/leakage-check`, `/calibration-check`, or dbt model test-coverage gaps. Delegate to a general-purpose subagent; results are large and read-only.
+3. **Genuinely parallel independent models** — when two or more dbt models share no dependency and the session benefits from parallel build, use worktree isolation.
+
+Do not spawn a subagent for targeted lookups (Glob/Grep is faster), or for code-writing tasks where you'd need to verify the output anyway.
+
+Pre-written prompts for recurring delegation patterns live in `docs/ideas/efficiency-scaffolding-followups.md` (promote when a pattern has been used twice).
+
+---
+
 ## Efficiency reviews
 
 `docs/efficiency.md` defines the principles and review cadence for keeping the agentic workflow lean. The review runs at every milestone close — `/wrap` prompts for it when a milestone has just closed. Parked ideas for future scaffolding live in `docs/ideas/efficiency-scaffolding-followups.md`.

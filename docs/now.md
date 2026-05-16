@@ -10,16 +10,16 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Active branch / PR
 
-- Branch: none (on `main`). M3 PR-A merged May 2026.
+- Branch: none (on `main`). M3 PR-B merged May 2026.
 - Open PR: none.
 
 ## Currently in flight
 
-- M3 PR-B next: staging layer — eight `stg_nhl__*` models, one per bronze endpoint. Plan in `docs/milestones/m3-silver-layer.md`. Working order: `landing` → `boxscore` → `skater-summary` / `goalie-summary` / `team-summary` / `roster` / `club-schedule-season` → `play-by-play` last.
+- M3 PR-C starting: `int_nhl__team_spine`, `dim_team`, `int_nhl__player_spine`, `dim_player`. Plan in `docs/milestones/m3-silver-layer.md` (PR-C section). Key complexity: franchise event mapping (ARI→UTA, VGK expansion, SEA expansion) in `int_nhl__team_spine`.
 
 ## Last session summary
 
-- M3 PR-A merged. MotherDuck provisioned (database `puckbunny`, region us-west-2). `dbt debug --target prod` green; `dbt seed && dbt test` against local DuckDB green (12/12 tests). Shipped `docs/infrastructure/motherduck.md` runbook (mirrors r2.md), `dbt/models/core/` scaffold, `dim_sport` + `dim_league` seeds with unique/not_null/relationships tests, `.env.example` updated. Initial MotherDuck token leaked into an untracked doc was rotated before any commit.
+- M3 PR-B merged (PR #40). Eight `stg_nhl__*` staging views shipped: `landing`, `boxscore`, `play_by_play`, `skater_summary`, `goalie_summary`, `team_summary`, `roster`, `club_schedule_season`. Hotfix commit followed (`fix(m3): ST06 column order in stg_nhl__roster`). DuckDB JSON extraction conventions from D6 established across all models.
 
 ## Blocked
 
@@ -27,7 +27,7 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Next concrete step
 
-- Open a fresh session on a new worktree. First housekeeping commit (small chore PR off `main`): add `.claude/worktrees/` and `logs/` to `.gitignore`; verify `dbt/profiles.yml` isn't tracked; remove the lingering `.claude/worktrees/ecstatic-tu-f78712/` and `.claude/worktrees/optimistic-clarke-01a87d/` directories with `git worktree prune` + `Remove-Item`. Then start PR-B (staging layer) on `feat/m3-pr-b-staging`.
+- Start PR-C on branch `feat/m3-pr-c-dim-team-player`. Build order per milestone plan: `int_nhl__team_spine` first (franchise event mapping), then `dim_team`, then `int_nhl__player_spine`, then `dim_player`. Tests: unique + not_null on `team_id` / `player_id`; relationships to `dim_league`.
 
 ---
 
