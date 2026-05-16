@@ -10,24 +10,26 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Active branch / PR
 
-- Branch: none (on `main`). M3 PR-A merged May 2026.
-- Open PR: none.
+- Worktree `peaceful-albattani-94ee85`: M3 PR-C (dim_team + dim_player) — ready to open PR.
+- Main repo: Pydantic fix in `src/puckbunny/ingestion/nhl/schemas.py` — unstaged, needs its own `fix:` commit.
 
 ## Currently in flight
 
-- M3 PR-B next: staging layer — eight `stg_nhl__*` models, one per bronze endpoint. Plan in `docs/milestones/m3-silver-layer.md`. Working order: `landing` → `boxscore` → `skater-summary` / `goalie-summary` / `team-summary` / `roster` / `club-schedule-season` → `play-by-play` last.
+- M3 PR-C: `int_nhl__team_spine`, `int_nhl__player_spine`, `dim_team`, `dim_player` — dbt build passes prod, sqlfluff clean. PR not yet opened.
 
 ## Last session summary
 
-- M3 PR-A merged. MotherDuck provisioned (database `puckbunny`, region us-west-2). `dbt debug --target prod` green; `dbt seed && dbt test` against local DuckDB green (12/12 tests). Shipped `docs/infrastructure/motherduck.md` runbook (mirrors r2.md), `dbt/models/core/` scaffold, `dim_sport` + `dim_league` seeds with unique/not_null/relationships tests, `.env.example` updated. Initial MotherDuck token leaked into an untracked doc was rotated before any commit.
+- Completed M3 PR-C: 4 new dbt models (team + player dimension spine + dims). Fixed staging game_type filter (WHERE game_type IN (2,3) in landing/boxscore/play-by-play) to exclude All-Star/4 Nations/Olympics. Fixed all 7 dbt 1.11.8 deprecated test syntax warnings in staging schema.yml. Fixed Pydantic bug in `ScheduleGame` (gameDate optional for preseason entries). Ran M2 2024-25 backfill — all 6 endpoints now in R2, 1,510 games loaded. Full prod `dbt build` passes clean.
 
 ## Blocked
 
-- None.
+- `filter_ingestible` only filters on `game_state`, not `game_type` — non-competitive games (All-Star, 4 Nations) land in R2 until fixed. Staging WHERE clause is the current defense; ingestion-layer fix is a follow-up `fix:` PR.
 
 ## Next concrete step
 
-- Open a fresh session on a new worktree. First housekeeping commit (small chore PR off `main`): add `.claude/worktrees/` and `logs/` to `.gitignore`; verify `dbt/profiles.yml` isn't tracked; remove the lingering `.claude/worktrees/ecstatic-tu-f78712/` and `.claude/worktrees/optimistic-clarke-01a87d/` directories with `git worktree prune` + `Remove-Item`. Then start PR-B (staging layer) on `feat/m3-pr-b-staging`.
+1. **Commit Pydantic fix** in main repo as `fix(ingestion): make ScheduleGame.gameDate optional for preseason entries`.
+2. **Open PR-C** from worktree branch — title: `feat(warehouse): dim_team and dim_player (M3 PR-C)`.
+3. **Start PR-D**: `fct_game` + `fct_game_outcome` on a new worktree off `feat/m3-pr-d-fct-game`.
 
 ---
 

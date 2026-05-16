@@ -85,6 +85,38 @@ This came up provisioning MotherDuck (May 2026): the raw JWT was pasted into `do
 
 ---
 
+## dbt in a worktree — setup checklist (Claude + Jon)
+
+Gitignored files don't transfer to a new worktree. Every worktree needs its own copies of:
+
+1. **`dbt/profiles.yml`** — copy from `dbt/profiles.yml.example` and fill in values. Without it, `dbt debug` fails with "Profile puckbunny not found".
+2. **`data/` directory** — DuckDB can't create its own parent directories. `New-Item -ItemType Directory -Path dbt/data -Force` before any `dbt run --target dev`.
+3. **Always pass `--profiles-dir dbt`** — dbt defaults to `~/.dbt/` which may not exist or may point to a different project.
+
+**Prod-specific: seed before you test FK relationships.**
+`dim_league` and `dim_sport` are seeds, not models. `dbt build --select +dim_team` doesn't include seeds in scope. Run `dbt seed --target prod` once per fresh MotherDuck database before any `dbt test` that uses a `relationships` test pointing at those tables — otherwise you get `Table with name dim_league does not exist!`.
+
+**R2 env vars: two spellings, two callers.**
+`.env` needs both:
+- `R2_ENDPOINT_URL=https://<account-id>.r2.cloudflarestorage.com` — used by boto3 (Python ingestion), which requires a full URL with scheme.
+- `R2_ENDPOINT=<account-id>.r2.cloudflarestorage.com` — used by DuckDB's `s3_endpoint` setting, which prepends its own `https://` and breaks if given a full URL. If `R2_ENDPOINT` is missing, DuckDB silently falls back to `s3.auto.amazonaws.com` (AWS default) and every `READ_PARQUET` call 404s with a misleading hostname error.
+
+This came up shipping M3 PR-C (May 2026).
+
+---
+
+## filter_ingestible only checks game_state, not game_type
+
+`filter_ingestible` in `src/puckbunny/ingestion/nhl/schedule.py` passes any game in state `{FINAL, OFF}` — it does **not** filter on `game_type`. All-Star games, the 4 Nations Face-Off, and any future non-competitive event will land in R2 if they finish with state FINAL.
+
+Current defense: `stg_nhl__landing`, `stg_nhl__boxscore`, and `stg_nhl__play_by_play` each have `WHERE game_type IN (2, 3)` in the source CTE, so non-competitive games are excluded from the silver layer.
+
+Follow-up fix needed: add `game_type IN (2, 3)` to `filter_ingestible` so bronze stays clean too. Until then, non-competitive game Parquet files accumulate in R2 (wasteful but harmless given current bronze read cost).
+
+This came up when the 2024-25 M2 backfill pulled All-Star Weekend and 4 Nations games into R2, causing `accepted_values` test failures on `stg_nhl__landing.game_type`.
+
+---
+
 ## Maintenance
 
 Append new entries below as incidents produce rules worth preserving. Each entry should:
