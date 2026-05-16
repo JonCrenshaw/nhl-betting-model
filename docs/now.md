@@ -10,16 +10,16 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Active branch / PR
 
-- Worktree `peaceful-albattani-94ee85`: M3 PR-C (dim_team + dim_player) — ready to open PR.
-- Main repo: Pydantic fix in `src/puckbunny/ingestion/nhl/schemas.py` — unstaged, needs its own `fix:` commit.
+- Branch: none (on `main`). M3 PR-B merged May 2026.
+- Open PR: none.
 
 ## Currently in flight
 
-- M3 PR-C: `int_nhl__team_spine`, `int_nhl__player_spine`, `dim_team`, `dim_player` — dbt build passes prod, sqlfluff clean. PR not yet opened.
+- M3 PR-C starting: `int_nhl__team_spine`, `dim_team`, `int_nhl__player_spine`, `dim_player`. Plan in `docs/milestones/m3-silver-layer.md` (PR-C section). Key complexity: franchise event mapping (ARI→UTA, VGK expansion, SEA expansion) in `int_nhl__team_spine`.
 
 ## Last session summary
 
-- Completed M3 PR-C: 4 new dbt models (team + player dimension spine + dims). Fixed staging game_type filter (WHERE game_type IN (2,3) in landing/boxscore/play-by-play) to exclude All-Star/4 Nations/Olympics. Fixed all 7 dbt 1.11.8 deprecated test syntax warnings in staging schema.yml. Fixed Pydantic bug in `ScheduleGame` (gameDate optional for preseason entries). Ran M2 2024-25 backfill — all 6 endpoints now in R2, 1,510 games loaded. Full prod `dbt build` passes clean.
+- M3 PR-B merged (PR #40). Eight `stg_nhl__*` staging views shipped: `landing`, `boxscore`, `play_by_play`, `skater_summary`, `goalie_summary`, `team_summary`, `roster`, `club_schedule_season`. Hotfix commit followed (`fix(m3): ST06 column order in stg_nhl__roster`). DuckDB JSON extraction conventions from D6 established across all models.
 
 ## Blocked
 
@@ -27,9 +27,7 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Next concrete step
 
-1. **Commit Pydantic fix** in main repo as `fix(ingestion): make ScheduleGame.gameDate optional for preseason entries`.
-2. **Open PR-C** from worktree branch — title: `feat(warehouse): dim_team and dim_player (M3 PR-C)`.
-3. **Start PR-D**: `fct_game` + `fct_game_outcome` on a new worktree off `feat/m3-pr-d-fct-game`.
+- Start PR-C on branch `feat/m3-pr-c-dim-team-player`. Build order per milestone plan: `int_nhl__team_spine` first (franchise event mapping), then `dim_team`, then `int_nhl__player_spine`, then `dim_player`. Tests: unique + not_null on `team_id` / `player_id`; relationships to `dim_league`.
 
 ---
 

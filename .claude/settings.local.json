@@ -4,7 +4,8 @@
       "PowerShell(\"---\")",
       "Bash(Get-ChildItem -Path \"D:\\\\Git\\\\PuckBunny\\\\nhl-betting-model\\\\.claude\\\\worktrees\\\\naughty-kare-6ecdee\\\\dbt\" -Name \"profiles.yml*\" -File)",
       "Bash(python -c ' *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "mcp__4e979c77-23e6-412c-8ea8-2007c5a69064__query"
     ]
   }
 }

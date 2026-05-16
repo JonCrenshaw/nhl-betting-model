@@ -17,6 +17,7 @@ WITH source AS (
       's3://puckbunny-lake/bronze/nhl_api/boxscore/**/*.parquet',
       hive_partitioning = TRUE
     )
+  WHERE JSON_EXTRACT_STRING(response_json, '$.gameType')::INTEGER IN (2, 3)
   QUALIFY ROW_NUMBER() OVER (
     PARTITION BY JSON_EXTRACT_STRING(response_json, '$.id')::BIGINT
     ORDER BY fetched_at_utc DESC
