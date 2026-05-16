@@ -185,7 +185,15 @@ class ScheduleGame(GameResponseBase):
     ``LIVE``, ``CRIT``, ``OFF``, ``FINAL``, ``PPD`` — the schedule
     walker filters to the "ingestible" set
     (:data:`puckbunny.ingestion.nhl.endpoints.INGESTIBLE_GAME_STATES`).
+
+    ``gameDate`` is optional here (overriding the required field on
+    :class:`GameResponseBase`) because some preseason schedule entries
+    omit it. These games always have non-ingestible ``gameState`` values
+    (``FUT``/``PRE``) so ``filter_ingestible`` excludes them regardless.
+    Gamecenter responses are unaffected — they always carry ``gameDate``.
     """
+
+    gameDate: date | None = None
 
 
 class ScheduleDay(BaseModel):

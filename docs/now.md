@@ -23,7 +23,7 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Blocked
 
-- None.
+- `filter_ingestible` only filters on `game_state`, not `game_type` — non-competitive games (All-Star, 4 Nations) land in R2 until fixed. Staging WHERE clause is the current defense; ingestion-layer fix is a follow-up `fix:` PR.
 
 ## Next concrete step
 
