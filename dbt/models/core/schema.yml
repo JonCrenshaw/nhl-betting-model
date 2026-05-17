@@ -236,3 +236,103 @@ models:
         description: True if the home team won; false if the away team won.
         tests:
           - not_null
+
+  - name: fct_game_event
+    description: >
+      Sport-agnostic game event table. One row per play-by-play event across
+      all finished NHL games. event_id is a stable composite of game_id and
+      the NHL API's sequential eventId within that game.
+
+      event_type maps NHL typeDescKey to a generic vocabulary
+      (hyphen-to-underscore, with shot-on-goal aliased to shot). Unknown
+      future event types inherit the replace pattern.
+
+      Three structural events (period_start, period_end, game_end) carry no
+      details block (ADR-0003 D3); team_id, coordinates, and player IDs are
+      null for those rows by design. All other null player/coord fields are
+      normal — not every event has both participants or ice coordinates.
+
+      situationCode (power-play state) is not captured here; add it when
+      M5 feature engineering requires it.
+    columns:
+      - name: event_id
+        description: >
+          Stable surrogate PK. Composite of game_id and NHL API eventId,
+          formatted as "{game_id}_{event_sequence}".
+        tests:
+          - unique
+          - not_null
+      - name: game_id
+        description: FK to fct_game.game_id.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_game')
+                field: game_id
+      - name: period
+        description: >
+          Period number. 1–3 for regulation, 4+ for overtime periods.
+          Shootout events appear in period 5 for regular-season games.
+        tests:
+          - not_null
+      - name: period_time_elapsed_s
+        description: >
+          Seconds elapsed within the period at the time of the event.
+          Derived from timeInPeriod (MM:SS). 0 for period-start events,
+          up to 1200 (20:00) for regulation periods.
+        tests:
+          - not_null
+      - name: event_type
+        description: >
+          Generic event type. Mapped from NHL typeDescKey using
+          hyphen-to-underscore replacement; shot-on-goal is aliased to
+          shot. Common values: shot, goal, penalty, faceoff, hit,
+          blocked_shot, missed_shot, giveaway, takeaway, stoppage,
+          period_start, period_end, game_end.
+        tests:
+          - not_null
+      - name: x_coord
+        description: >
+          Ice x-coordinate of the event (-100 to 100). Null for structural
+          events (period_start, period_end, game_end) and some stoppages.
+      - name: y_coord
+        description: >
+          Ice y-coordinate of the event (-42 to 42). Null for the same
+          event types as x_coord.
+      - name: team_id
+        description: >
+          FK to dim_team.team_id for the event-owning team. Null for
+          structural events. Maps from details.eventOwnerTeamId.
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_team')
+                field: team_id
+      - name: primary_player_id
+        description: >
+          FK to dim_player.player_id for the primary participant. Resolution
+          order: scorer > shooter > hitter > blocker > faceoff winner >
+          penalty committer > generic player. Null for structural events
+          and events with no identified primary participant.
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_player')
+                field: player_id
+      - name: secondary_player_id
+        description: >
+          FK to dim_player.player_id for the secondary participant.
+          Resolution order: first assist > goalie in net > hittee >
+          faceoff loser > penalty drawer. Null for most event types.
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_player')
+                field: player_id
+      - name: details_json
+        description: >
+          Verbatim details sub-object from the NHL API play element as
+          JSON text. Contains all event-specific fields not promoted to
+          top-level columns (e.g. assist2PlayerId, shotType, reason,
+          descKey, duration). Null for structural events.
