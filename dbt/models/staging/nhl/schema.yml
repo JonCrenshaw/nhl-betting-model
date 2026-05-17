@@ -20,11 +20,16 @@ models:
         tests:
           - not_null
       - name: game_type
-        description: "1=preseason, 2=regular season, 3=playoffs."
+        description: >
+          2=regular season, 3=playoffs. Non-competitive game types (All-Star,
+          4 Nations Face-Off, Olympics) are filtered at the staging layer via
+          WHERE game_type IN (2, 3); they pass filter_ingestible in the loader
+          because INGESTIBLE_GAME_STATES only checks game_state.
         tests:
           - not_null
           - accepted_values:
-              values: [1, 2, 3]
+              arguments:
+                values: [2, 3]
       - name: game_date
         description: Local game date (YYYY-MM-DD) from the API response.
         tests:
@@ -36,7 +41,8 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['FINAL', 'OFF']
+              arguments:
+                values: ['FINAL', 'OFF']
       - name: start_time_utc
         description: Scheduled start time in UTC.
         tests:
@@ -99,11 +105,14 @@ models:
         tests:
           - not_null
       - name: game_type
-        description: "1=preseason, 2=regular season, 3=playoffs."
+        description: >
+          2=regular season, 3=playoffs. Non-competitive game types filtered at
+          the staging layer; see stg_nhl__landing.game_type for full rationale.
         tests:
           - not_null
           - accepted_values:
-              values: [1, 2, 3]
+              arguments:
+                values: [2, 3]
       - name: game_date
         description: Local game date.
         tests:
@@ -113,7 +122,8 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['FINAL', 'OFF']
+              arguments:
+                values: ['FINAL', 'OFF']
       - name: start_time_utc
         description: Scheduled start time in UTC.
         tests:
@@ -172,11 +182,14 @@ models:
         tests:
           - not_null
       - name: game_type
-        description: "1=preseason, 2=regular season, 3=playoffs."
+        description: >
+          2=regular season, 3=playoffs. Non-competitive game types filtered at
+          the staging layer; see stg_nhl__landing.game_type for full rationale.
         tests:
           - not_null
           - accepted_values:
-              values: [1, 2, 3]
+              arguments:
+                values: [2, 3]
       - name: game_date
         description: Local game date.
         tests:
@@ -186,7 +199,8 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['FINAL', 'OFF']
+              arguments:
+                values: ['FINAL', 'OFF']
       - name: start_time_utc
         description: Scheduled start time in UTC.
         tests:
@@ -407,7 +421,8 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['F', 'D', 'G']
+              arguments:
+                values: ['F', 'D', 'G']
       - name: position_code
         description: "Fine-grained position: C, L, R (forwards), D (defense), G (goalie)."
       - name: first_name

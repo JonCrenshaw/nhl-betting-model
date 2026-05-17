@@ -10,16 +10,18 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Active branch / PR
 
-- Worktree `peaceful-albattani-94ee85`: M3 PR-C (dim_team + dim_player) — ready to open PR.
-- Main repo: Pydantic fix in `src/puckbunny/ingestion/nhl/schemas.py` — unstaged, needs its own `fix:` commit.
+- Branch: `main` (no active feature branch). PR-D (#44) and PR-E (#45) both merged.
+- Open PR: none.
 
 ## Currently in flight
 
-- M3 PR-C: `int_nhl__team_spine`, `int_nhl__player_spine`, `dim_team`, `dim_player` — dbt build passes prod, sqlfluff clean. PR not yet opened.
+- Nothing — M3 PRs A–E all merged into main.
 
 ## Last session summary
 
-- Completed M3 PR-C: 4 new dbt models (team + player dimension spine + dims). Fixed staging game_type filter (WHERE game_type IN (2,3) in landing/boxscore/play-by-play) to exclude All-Star/4 Nations/Olympics. Fixed all 7 dbt 1.11.8 deprecated test syntax warnings in staging schema.yml. Fixed Pydantic bug in `ScheduleGame` (gameDate optional for preseason entries). Ran M2 2024-25 backfill — all 6 endpoints now in R2, 1,510 games loaded. Full prod `dbt build` passes clean.
+- M3 PR-E merged (#45): `int_nhl__game_events` (CROSS JOIN UNNEST, ephemeral) + `fct_game_event` (sport-agnostic event table with generic event_type vocabulary). ST06 noqa on outer SELECT confirmed as sqlfluff false positive; gotcha documented.
+- M3 PR-D merged (#44): `fct_game` (game spine) + `fct_game_outcome` (scores, winner, period_end, home_win).
+- `gh` CLI installed at `C:\Program Files\GitHub CLI\gh.exe` — not on default PATH; add with `$env:PATH += ";C:\Program Files\GitHub CLI"` in PowerShell or configure permanently.
 
 ## Blocked
 
@@ -27,9 +29,7 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Next concrete step
 
-1. **Commit Pydantic fix** in main repo as `fix(ingestion): make ScheduleGame.gameDate optional for preseason entries`.
-2. **Open PR-C** from worktree branch — title: `feat(warehouse): dim_team and dim_player (M3 PR-C)`.
-3. **Start PR-D**: `fct_game` + `fct_game_outcome` on a new worktree off `feat/m3-pr-d-fct-game`.
+- Start PR-F on a new branch: `int_nhl__game_skater_stats` + `int_nhl__game_goalie_stats` (intermediates parsing boxscore) + `fct_game_lineup` (union skaters + goalies). Plan in `docs/milestones/m3-silver-layer.md` (PR-F section). Branch: `feat/m3-pr-f-lineup`.
 
 ---
 

@@ -117,6 +117,35 @@ This came up when the 2024-25 M2 backfill pulled All-Star Weekend and 4 Nations 
 
 ---
 
+## sqlfluff ST06 false positive on UNNEST-derived CTEs (Claude)
+
+**Rule:** When an intermediate dbt model unnests a JSON array, add `-- noqa: ST06` to the outer SELECT. Do not spend time restructuring — it won't help.
+
+**Why:** sqlfluff's DuckDB dialect cannot determine column origin through `CROSS JOIN UNNEST(col::JSON [])`. As a result it misclassifies a genuine column reference (`game_id`) as a calculated expression and fires ST06 ("simple targets before calculations") even when the column order is correct. Five structural variations were tried (UNNEST-in-SELECT, two-CTE, FROM-clause CROSS JOIN UNNEST, wrapped/unwrapped function calls, subqueries) and all produced the same false positive at the outer SELECT.
+
+**Fix pattern:**
+```sql
+WITH plays_unnested AS (
+  SELECT
+    p.game_id,
+    t.play
+  FROM {{ ref('...') }} AS p
+  CROSS JOIN UNNEST(p.col::JSON []) AS t (play)
+)
+
+-- noqa: disable=ST06 — UNNEST-derived CTE; game_id is a column ref but
+-- the linter cannot determine its origin through the CROSS JOIN UNNEST.
+SELECT  -- noqa: ST06
+  game_id,
+  JSON_EXTRACT_STRING(play, '$.field') AS field,
+  ...
+FROM plays_unnested
+```
+
+First surfaced in `int_nhl__game_events.sql` (M3 PR-E, May 2026).
+
+---
+
 ## Maintenance
 
 Append new entries below as incidents produce rules worth preserving. Each entry should:
