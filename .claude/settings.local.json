@@ -5,7 +5,18 @@
       "Bash(Get-ChildItem -Path \"D:\\\\Git\\\\PuckBunny\\\\nhl-betting-model\\\\.claude\\\\worktrees\\\\naughty-kare-6ecdee\\\\dbt\" -Name \"profiles.yml*\" -File)",
       "Bash(python -c ' *)",
       "Bash(git add *)",
-      "mcp__4e979c77-23e6-412c-8ea8-2007c5a69064__query"
+      "mcp__4e979c77-23e6-412c-8ea8-2007c5a69064__query",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh pr create --title 'feat\\(warehouse\\): fct_game and fct_game_outcome \\(M3 PR-D\\)' --body ' *)",
+      "PowerShell(Get-Command gh -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\GitHub CLI\\\\\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:LOCALAPPDATA\\\\Programs\\\\GitHub CLI\\\\\" -ErrorAction SilentlyContinue; Get-ChildItem \"C:\\\\Users\\\\Jon\\\\scoop\\\\shims\\\\gh.exe\" -ErrorAction SilentlyContinue)",
+      "Bash(which gh *)",
+      "Bash(git stash *)",
+      "Bash(git commit *)",
+      "Bash(git reset *)",
+      "Bash(git checkout *)",
+      "Bash(gh pr *)"
     ]
   }
 }

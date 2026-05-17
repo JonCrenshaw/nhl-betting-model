@@ -10,16 +10,18 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Active branch / PR
 
-- Branch: none (on `main`). M3 PR-B merged May 2026.
+- Branch: `main` (no active feature branch). PR-D (#44) and PR-E (#45) both merged.
 - Open PR: none.
 
 ## Currently in flight
 
-- M3 PR-C starting: `int_nhl__team_spine`, `dim_team`, `int_nhl__player_spine`, `dim_player`. Plan in `docs/milestones/m3-silver-layer.md` (PR-C section). Key complexity: franchise event mapping (ARI→UTA, VGK expansion, SEA expansion) in `int_nhl__team_spine`.
+- Nothing — M3 PRs A–E all merged into main.
 
 ## Last session summary
 
-- M3 PR-B merged (PR #40). Eight `stg_nhl__*` staging views shipped: `landing`, `boxscore`, `play_by_play`, `skater_summary`, `goalie_summary`, `team_summary`, `roster`, `club_schedule_season`. Hotfix commit followed (`fix(m3): ST06 column order in stg_nhl__roster`). DuckDB JSON extraction conventions from D6 established across all models.
+- M3 PR-E merged (#45): `int_nhl__game_events` (CROSS JOIN UNNEST, ephemeral) + `fct_game_event` (sport-agnostic event table with generic event_type vocabulary). ST06 noqa on outer SELECT confirmed as sqlfluff false positive; gotcha documented.
+- M3 PR-D merged (#44): `fct_game` (game spine) + `fct_game_outcome` (scores, winner, period_end, home_win).
+- `gh` CLI installed at `C:\Program Files\GitHub CLI\gh.exe` — not on default PATH; add with `$env:PATH += ";C:\Program Files\GitHub CLI"` in PowerShell or configure permanently.
 
 ## Blocked
 
@@ -27,7 +29,7 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Next concrete step
 
-- Start PR-C on branch `feat/m3-pr-c-dim-team-player`. Build order per milestone plan: `int_nhl__team_spine` first (franchise event mapping), then `dim_team`, then `int_nhl__player_spine`, then `dim_player`. Tests: unique + not_null on `team_id` / `player_id`; relationships to `dim_league`.
+- Start PR-F on a new branch: `int_nhl__game_skater_stats` + `int_nhl__game_goalie_stats` (intermediates parsing boxscore) + `fct_game_lineup` (union skaters + goalies). Plan in `docs/milestones/m3-silver-layer.md` (PR-F section). Branch: `feat/m3-pr-f-lineup`.
 
 ---
 
