@@ -48,6 +48,13 @@ For each item that came up:
 
 If a milestone just closed in this session (exit criteria met, milestone PR merged, status updated to ✅ in the roadmap), remind Jon that `docs/efficiency.md` defines a milestone-close review cadence and ask whether he wants to run it now.
 
-### 5. Recommend next commit
+### 5. Commit, push, and merge
 
-If there are uncommitted changes worth committing, propose a Conventional Commit message and a branch name following the convention in `CLAUDE.md`. Don't run `git` — Jon handles git operations in GitHub Desktop.
+This step happens in order — wrap must complete before the feature PR merges so that `main` is immediately correct with no follow-up PR.
+
+1. **Commit housekeeping changes** — stage and commit any updates to `docs/now.md`, `docs/gotchas.md`, `docs/roadmap.md`, ADRs, or `.claude/settings.local.json` as a `chore: wrap <milestone> <PR> session` commit on the current feature branch.
+2. **Push** — `git push` so the chore commit is on the remote branch before the PR merges.
+3. **Ask Jon to confirm CI is green** — do not merge until confirmed.
+4. **Merge the PR** — once CI is green, run `gh pr merge --merge` (or `--squash` if that's the repo convention). This brings the updated `now.md` into `main` in the same merge as the feature code.
+
+If there is no open PR (planning-only session, or the session produced only housekeeping changes), skip the merge step and note the pending commit so the next session can open or update the PR.
