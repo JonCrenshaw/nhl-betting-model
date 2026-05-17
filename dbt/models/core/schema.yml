@@ -110,3 +110,129 @@ models:
           nhl_api_player_id. Example: {"nhl_api_player_id": 8478402}.
         tests:
           - not_null
+
+  - name: fct_game
+    description: >
+      Game spine. One row per finished NHL game (game_type 2 or 3). The
+      authoritative source for game-level metadata; fct_game_outcome,
+      fct_game_event, and fct_game_lineup all FK to game_id here.
+      league_id is always 1 (NHL) for current data; sport_id propagates
+      through dim_league. venue_team_id equals home_team_id by convention —
+      landing carries venue_name but no venue FK.
+    columns:
+      - name: game_id
+        description: >
+          NHL game identifier (BIGINT). PK for this table and the FK used
+          by fct_game_outcome, fct_game_event, and fct_game_lineup.
+        tests:
+          - unique
+          - not_null
+      - name: league_id
+        description: FK to dim_league.league_id. Always 1 (NHL) for current data.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_league')
+                field: league_id
+      - name: season
+        description: Eight-character season string (e.g. "20242025").
+        tests:
+          - not_null
+      - name: game_datetime_utc
+        description: Scheduled game start time in UTC (TIMESTAMPTZ).
+        tests:
+          - not_null
+      - name: home_team_id
+        description: FK to dim_team.team_id for the home team.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_team')
+                field: team_id
+      - name: away_team_id
+        description: FK to dim_team.team_id for the away team.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_team')
+                field: team_id
+      - name: venue_team_id
+        description: >
+          FK to dim_team.team_id for the venue host (equals home_team_id).
+          Included as a distinct column to support future enrichment from a
+          dedicated venue source where neutral-site games may differ.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_team')
+                field: team_id
+      - name: game_type
+        description: "2 = regular season, 3 = playoffs."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [2, 3]
+      - name: status
+        description: >
+          Final game state from bronze. Only FINAL and OFF reach silver
+          (the staging layer filters to INGESTIBLE_GAME_STATES).
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['FINAL', 'OFF']
+
+  - name: fct_game_outcome
+    description: >
+      Game outcome. One row per finished NHL game. Carries final scores,
+      the winning team, the period in which the game ended, and a boolean
+      home_win flag. Sourced entirely from stg_nhl__landing; no bronze
+      re-read. Ties are not possible — landing is pre-filtered to FINAL/OFF
+      game states, guaranteeing a decided winner.
+    columns:
+      - name: game_id
+        description: >
+          FK to fct_game.game_id and NHL game identifier. PK for this table
+          (one outcome per game).
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_game')
+                field: game_id
+      - name: home_goals
+        description: Home team final goal count.
+        tests:
+          - not_null
+      - name: away_goals
+        description: Away team final goal count.
+        tests:
+          - not_null
+      - name: winning_team_id
+        description: FK to dim_team.team_id for the winning team.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_team')
+                field: team_id
+      - name: period_end
+        description: >
+          Period type in which the game ended: REG (regulation), OT
+          (overtime), or SO (shootout). Maps directly from
+          stg_nhl__landing.final_period_type.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['REG', 'OT', 'SO']
+      - name: home_win
+        description: True if the home team won; false if the away team won.
+        tests:
+          - not_null
