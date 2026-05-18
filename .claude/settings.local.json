@@ -16,7 +16,8 @@
       "Bash(git commit *)",
       "Bash(git reset *)",
       "Bash(git checkout *)",
-      "Bash(gh pr *)"
+      "Bash(gh pr *)",
+      "Bash(git pull *)"
     ]
   }
 }
