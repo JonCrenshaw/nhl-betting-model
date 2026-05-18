@@ -23,6 +23,7 @@ Read these files in order to load context for this session:
 
 Then, before writing any code or making any edits:
 
+- Prompt Jon to run `git fetch origin` in GitHub Desktop (or terminal) if he hasn't already, so the local branch reflects the latest remote state before any new work starts.
 - Restate in one sentence what you understand the goal of this session to be
 - Name the doc(s) you read that informed your understanding
 - Ask Jon to confirm the goal before proceeding

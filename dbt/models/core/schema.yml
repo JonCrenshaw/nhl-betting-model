@@ -336,3 +336,75 @@ models:
           JSON text. Contains all event-specific fields not promoted to
           top-level columns (e.g. assist2PlayerId, shotType, reason,
           descKey, duration). Null for structural events.
+
+  - name: fct_game_lineup
+    description: >
+      Sport-agnostic per-player game participation table. One row per
+      (game_id, player_id) covering all skaters (position_type F/D) and goalies
+      (position_type G) who appear in the boxscore for finished NHL games.
+
+      Columns that apply only to one role are null for the other: saves and
+      goals_against are null for skaters; goals, assists, and shots are null for
+      goalies. Scratch goalies (toi_s = 0) are included — the boxscore API lists
+      them with zero stats.
+
+      lineup_id is a stable surrogate PK composed of game_id and player_id,
+      following the same pattern as event_id in fct_game_event. Line and pairing
+      assignments are not available from M2 bronze; add them when a future data
+      source provides them.
+    columns:
+      - name: lineup_id
+        description: >
+          Stable surrogate PK. Composite of game_id and player_id, formatted as
+          "{game_id}_{player_id}". Unique across the full dataset because a player
+          appears at most once per game.
+        tests:
+          - unique
+          - not_null
+      - name: game_id
+        description: FK to fct_game.game_id.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_game')
+                field: game_id
+      - name: team_id
+        description: FK to dim_team.team_id for the team the player appeared for.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_team')
+                field: team_id
+      - name: player_id
+        description: FK to dim_player.player_id.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_player')
+                field: player_id
+      - name: position_type
+        description: "Coarse position group: F (forward), D (defenseman), G (goalie)."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['F', 'D', 'G']
+      - name: toi_s
+        description: >
+          Time on ice in seconds. Converted from the NHL API's MM:SS string.
+          0 for scratch goalies; positive for all other players.
+        tests:
+          - not_null
+      - name: goals
+        description: Goals scored. Null for goalies.
+      - name: assists
+        description: Assists recorded. Null for goalies.
+      - name: shots
+        description: Shots on goal (sog in the NHL API). Null for goalies.
+      - name: saves
+        description: Saves made. Null for skaters. 0 for scratch goalies.
+      - name: goals_against
+        description: Goals allowed. Null for skaters. 0 for scratch goalies.

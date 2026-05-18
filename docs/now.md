@@ -10,18 +10,18 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Active branch / PR
 
-- Branch: `main` (no active feature branch). PR-D (#44) and PR-E (#45) both merged.
+- Branch: `feat/m3-pr-f-lineup` (uncommitted, ready to commit and open PR).
 - Open PR: none.
 
 ## Currently in flight
 
-- Nothing — M3 PRs A–E all merged into main.
+- PR-F code + wrap housekeeping written; not yet committed or pushed.
 
 ## Last session summary
 
-- M3 PR-E merged (#45): `int_nhl__game_events` (CROSS JOIN UNNEST, ephemeral) + `fct_game_event` (sport-agnostic event table with generic event_type vocabulary). ST06 noqa on outer SELECT confirmed as sqlfluff false positive; gotcha documented.
-- M3 PR-D merged (#44): `fct_game` (game spine) + `fct_game_outcome` (scores, winner, period_end, home_win).
-- `gh` CLI installed at `C:\Program Files\GitHub CLI\gh.exe` — not on default PATH; add with `$env:PATH += ";C:\Program Files\GitHub CLI"` in PowerShell or configure permanently.
+- M3 PR-F written: `int_nhl__game_skater_stats` + `int_nhl__game_goalie_stats` (ephemeral intermediates, CROSS JOIN UNNEST from boxscore) + `fct_game_lineup` (sport-agnostic UNION ALL, `lineup_id` surrogate PK). YAML docs and tests added to both schema.yml files.
+- `/start` updated: now prompts Jon to `git fetch origin` before session work begins.
+- `/wrap` updated: step 5 now instructs committing housekeeping, pushing, and merging the PR (matching the version already on `main`).
 
 ## Blocked
 
@@ -29,7 +29,10 @@ Keep this file under ~80 lines. If it grows beyond that, content has either gone
 
 ## Next concrete step
 
-- Start PR-F on a new branch: `int_nhl__game_skater_stats` + `int_nhl__game_goalie_stats` (intermediates parsing boxscore) + `fct_game_lineup` (union skaters + goalies). Plan in `docs/milestones/m3-silver-layer.md` (PR-F section). Branch: `feat/m3-pr-f-lineup`.
+1. Commit feature code on `feat/m3-pr-f-lineup` (see commit message below).
+2. Commit wrap housekeeping (`docs/now.md`, `.claude/commands/start.md`, `.claude/commands/wrap.md`) as `chore: wrap M3 PR-F session`.
+3. Push branch, open PR, confirm CI green, merge.
+4. Then PR-G: refresh `docs/architecture/data-warehouse.md`, run `dbt run --target prod && dbt test --target prod` against MotherDuck, update roadmap M3 → ✅ Complete.
 
 ---
 
