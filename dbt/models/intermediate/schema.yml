@@ -82,3 +82,78 @@ models:
         description: >
           ISO 3166-1 alpha-3 birth country code (e.g. "CAN", "USA").
           From roster; null if no roster row.
+
+  - name: int_nhl__game_skater_stats
+    description: >
+      One row per (game_id, player_id) for all skaters (forwards and defensemen)
+      who appear in the boxscore playerByGameStats array. Sourced from
+      stg_nhl__boxscore; both teams' forwards and defense arrays are unnested and
+      unioned. position_type is derived from the array group (F for forwards, D
+      for defense), not from the player's position field. Consumed only by
+      fct_game_lineup.
+    columns:
+      - name: game_id
+        description: FK to fct_game.game_id.
+        tests:
+          - not_null
+      - name: team_id
+        description: NHL API team identifier for the team the skater played for.
+        tests:
+          - not_null
+      - name: player_id
+        description: NHL API player identifier.
+        tests:
+          - not_null
+      - name: position_type
+        description: "Coarse position group derived from the boxscore array: F (forward) or D (defenseman)."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['F', 'D']
+      - name: toi_s
+        description: Time on ice in seconds, converted from the API's MM:SS string.
+        tests:
+          - not_null
+      - name: goals
+        description: Goals scored by the skater in this game.
+      - name: assists
+        description: Assists recorded by the skater in this game.
+      - name: shots
+        description: Shots on goal (sog in the NHL API) by the skater in this game.
+
+  - name: int_nhl__game_goalie_stats
+    description: >
+      One row per (game_id, player_id) for all goalies who appear in the boxscore
+      playerByGameStats.goalies array. Both teams' goalie arrays are unnested and
+      unioned. Scratch goalies (starter: false, toi: "00:00") are included with
+      toi_s = 0, saves = 0, and goals_against = 0 — the API always populates
+      these fields. Consumed only by fct_game_lineup.
+    columns:
+      - name: game_id
+        description: FK to fct_game.game_id.
+        tests:
+          - not_null
+      - name: team_id
+        description: NHL API team identifier for the team the goalie played for.
+        tests:
+          - not_null
+      - name: player_id
+        description: NHL API player identifier.
+        tests:
+          - not_null
+      - name: position_type
+        description: Always G (goalie).
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['G']
+      - name: toi_s
+        description: Time on ice in seconds, converted from the API's MM:SS string. 0 for scratch goalies.
+        tests:
+          - not_null
+      - name: saves
+        description: Saves made by the goalie in this game. 0 for scratch goalies.
+      - name: goals_against
+        description: Goals allowed by the goalie in this game. 0 for scratch goalies.
